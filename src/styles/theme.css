@@ -243,7 +243,23 @@ nav.sidebar a:focus {
 }
 
 nav.sidebar ul ul li {
-  border-inline-start-color: var(--sl-color-hairline-light);
+  border-inline-start: none;
+  padding-inline-start: 0.75rem;
+}
+
+nav.sidebar ul ul a {
+  position: relative;
+}
+
+nav.sidebar ul ul a[aria-current='page']::before {
+  content: '';
+  position: absolute;
+  inset-inline-start: -0.75rem;
+  top: 0.35em;
+  bottom: 0.35em;
+  width: 2px;
+  border-radius: 1px;
+  background: var(--sl-color-text-accent);
 }
 
 nav.sidebar a[aria-current='page'],

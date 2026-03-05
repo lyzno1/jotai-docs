@@ -1,0 +1,180 @@
+---
+const { entry } = Astro.locals.starlightRoute;
+const title = entry.data.title;
+const rawMarkdown = entry.body ?? '';
+const sourceId = `md-source-${entry.id.replace(/[^\w-]+/g, '-')}`;
+
+const frontmatterLines = [`title: ${JSON.stringify(title)}`];
+for (const [key, value] of Object.entries(entry.data)) {
+  if (key === 'title' || key === 'editUrl') continue;
+  if (value === undefined || value === null || value === false) continue;
+  frontmatterLines.push(`${key}: ${JSON.stringify(value)}`);
+}
+const fullMarkdown = `---\n${frontmatterLines.join('\n')}\n---\n\n${rawMarkdown}`;
+const serializeForScriptTag = (value: string) =>
+  JSON.stringify(value)
+    .replace(/</g, '\\u003C')
+    .replace(/>/g, '\\u003E')
+    .replace(/&/g, '\\u0026')
+    .replace(/\u2028/g, '\\u2028')
+    .replace(/\u2029/g, '\\u2029');
+const fullMarkdownJson = serializeForScriptTag(fullMarkdown);
+---
+
+<div class="page-title-row" data-copy-md-root>
+  <h1 id="_top">{title}</h1>
+  <button
+    class="copy-md-btn"
+    type="button"
+    aria-label="Copy page as Markdown"
+    data-md-source-id={sourceId}
+  >
+  <svg class="copy-icon" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M16 3H4a2 2 0 0 0-2 2v11"></path>
+    <rect x="8" y="7" width="14" height="14" rx="2"></rect>
+  </svg>
+  <svg class="check-icon" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <polyline points="20 6 9 17 4 12"></polyline>
+  </svg>
+  <span class="copy-label">Copy</span>
+  </button>
+</div>
+<script is:inline id={sourceId} type="application/json" set:html={fullMarkdownJson} />
+
+<style>
+  @layer starlight.core {
+    h1 {
+      margin-top: 1rem;
+      font-size: var(--sl-text-h1);
+      line-height: var(--sl-line-height-headings);
+      font-weight: 600;
+      color: var(--sl-color-white);
+    }
+  }
+
+  .page-title-row {
+    display: flex;
+    align-items: flex-end;
+    gap: 0.75rem;
+  }
+
+  .page-title-row h1 {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .copy-md-btn {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin-bottom: 0.35rem;
+    padding: 0.4rem 0.75rem;
+    border: 1px solid var(--sl-color-hairline);
+    border-radius: 0.5rem;
+    background: var(--sl-color-accent-low);
+    color: var(--sl-color-gray-2);
+    font-family: var(--sl-font);
+    font-size: 0.78rem;
+    font-weight: 500;
+    line-height: 1;
+    cursor: pointer;
+    user-select: none;
+    transition: color 200ms ease, border-color 200ms ease, background-color 200ms ease;
+  }
+
+  .copy-md-btn:hover {
+    color: var(--sl-color-white);
+    border-color: var(--sl-color-gray-3);
+    background: var(--sl-color-gray-5);
+  }
+
+  .copy-md-btn:active {
+    transform: scale(0.97);
+  }
+
+  .copy-md-btn.copied {
+    color: var(--sl-color-green);
+    border-color: color-mix(in srgb, var(--sl-color-green) 40%, transparent);
+    background: color-mix(in srgb, var(--sl-color-green) 8%, transparent);
+    pointer-events: none;
+  }
+
+  .copy-md-btn .check-icon {
+    display: none;
+  }
+
+  .copy-md-btn.copied .copy-icon {
+    display: none;
+  }
+
+  .copy-md-btn.copied .check-icon {
+    display: block;
+  }
+</style>
+
+<script is:inline>
+  const __fallbackCopy = (text) => {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.cssText = 'position:fixed;left:-9999px;opacity:0';
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand('copy'); } catch { /* noop */ }
+    document.body.removeChild(ta);
+  };
+
+  const __initCopyMd = () => {
+    const roots = document.querySelectorAll('[data-copy-md-root]');
+    for (const root of roots) {
+      if (root.__copyBound) continue;
+      root.__copyBound = true;
+
+      const btn = root.querySelector('.copy-md-btn');
+      if (!btn) continue;
+
+      btn.addEventListener('click', () => {
+        if (btn.classList.contains('copied')) return;
+
+        const sourceId = btn.getAttribute('data-md-source-id');
+        if (!sourceId) return;
+        const el = document.getElementById(sourceId);
+        if (!el) return;
+
+        let md;
+        try {
+          md = JSON.parse(el.textContent || '""');
+        } catch {
+          return;
+        }
+
+        const label = btn.querySelector('.copy-label');
+        const onDone = () => {
+          btn.classList.add('copied');
+          if (label) label.textContent = 'Copied!';
+          setTimeout(() => {
+            btn.classList.remove('copied');
+            if (label) label.textContent = 'Copy';
+          }, 2000);
+        };
+
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(md).then(onDone).catch(() => {
+            __fallbackCopy(md);
+            onDone();
+          });
+        } else {
+          __fallbackCopy(md);
+          onDone();
+        }
+      });
+    }
+  };
+
+  document.addEventListener('astro:page-load', __initCopyMd);
+  if (document.readyState !== 'loading') {
+    __initCopyMd();
+  } else {
+    document.addEventListener('DOMContentLoaded', __initCopyMd);
+  }
+</script>

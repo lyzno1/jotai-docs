@@ -5,7 +5,14 @@ import { fileURLToPath } from 'node:url'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const ROOT = path.resolve(__dirname, '..')
-const STATUS_SCRIPT = path.join(ROOT, 'scripts', 'i18n-status.mjs')
+const STATUS_SCRIPT = path.join(
+  ROOT,
+  '.agents',
+  'skills',
+  'jotai-zh-translation',
+  'scripts',
+  'i18n-status.mjs',
+)
 
 const FAIL_KEYS = [
   'sourceMissing',

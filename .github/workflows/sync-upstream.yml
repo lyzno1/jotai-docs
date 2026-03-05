@@ -45,7 +45,7 @@ jobs:
         id: i18n
         run: |
           status_json="$RUNNER_TEMP/i18n-status.json"
-          node scripts/i18n-status.mjs --json > "$status_json"
+          node .agents/skills/jotai-zh-translation/scripts/i18n-status.mjs --json > "$status_json"
           export I18N_STATUS_PATH="$status_json"
           node --input-type=module <<'NODE'
           import { appendFileSync, readFileSync } from 'node:fs'

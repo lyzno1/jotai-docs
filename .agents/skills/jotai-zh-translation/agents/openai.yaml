@@ -1,0 +1,4 @@
+interface:
+  display_name: "Jotai ZH Translation"
+  short_description: "Manage English sync and Chinese translation flow"
+  default_prompt: "Track upstream updates, plan zh translations, and verify freshness."

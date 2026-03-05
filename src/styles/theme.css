@@ -60,6 +60,9 @@
   --sl-toc-link-bg-hover: rgba(236, 236, 236, 0.06);
   --sl-toc-link-bg-active: rgba(236, 236, 236, 0.12);
   --sl-toc-link-border-active: rgba(236, 236, 236, 0.2);
+  --sl-title-divider-strong: rgba(236, 236, 236, 0.26);
+  --sl-title-divider-soft: rgba(236, 236, 236, 0.08);
+  --sl-lede-rule: rgba(236, 236, 236, 0.28);
 
   --sl-shadow-sm: none;
   --sl-shadow-md: none;
@@ -125,6 +128,9 @@
   --sl-toc-link-bg-hover: rgba(13, 13, 13, 0.04);
   --sl-toc-link-bg-active: rgba(13, 13, 13, 0.08);
   --sl-toc-link-border-active: rgba(26, 26, 26, 0.14);
+  --sl-title-divider-strong: rgba(26, 26, 26, 0.2);
+  --sl-title-divider-soft: rgba(26, 26, 26, 0.06);
+  --sl-lede-rule: rgba(26, 26, 26, 0.18);
 
   --sl-shadow-sm: none;
   --sl-shadow-md: none;
@@ -163,10 +169,44 @@ body {
   letter-spacing: -0.03em;
 }
 
+.page-title-row {
+  position: relative;
+  padding-bottom: 0.9rem;
+  margin-bottom: 0.15rem;
+}
+
+.page-title-row::after {
+  content: '';
+  position: absolute;
+  inset-inline-start: 0;
+  bottom: 0;
+  width: min(100%, 34rem);
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    var(--sl-title-divider-strong) 0%,
+    var(--sl-title-divider-soft) 62%,
+    transparent 100%
+  );
+}
+
 .sl-markdown-content p,
 .sl-markdown-content li,
 .sl-markdown-content blockquote {
   max-width: 72ch;
+}
+
+.content-panel + .content-panel .sl-markdown-content > :first-child {
+  margin-top: 1.35rem;
+}
+
+.content-panel + .content-panel .sl-markdown-content > p:first-child {
+  max-width: 66ch;
+  padding-inline-start: 0.9rem;
+  border-inline-start: 2px solid var(--sl-lede-rule);
+  font-size: clamp(1.02rem, 1rem + 0.28vw, 1.16rem);
+  line-height: 1.8;
+  color: var(--sl-color-text-accent);
 }
 
 :where(a, button, summary, select, input, textarea, [role='button'], [tabindex]):focus-visible {

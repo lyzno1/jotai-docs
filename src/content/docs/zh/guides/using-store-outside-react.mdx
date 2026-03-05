@@ -1,0 +1,52 @@
+---
+title: Using store outside React
+description: Using store outside React
+nav: 8.98
+keywords: state, outside, react
+published: false
+---
+
+{/*
+translation-source-path: guides/using-store-outside-react.mdx
+translation-source-ref: v2.18.0
+translation-source-hash: f0e84553d785e796c045167cefbb19c78912b82dfdda46fd0f64184a2f79821f
+translation-status: translated
+*/}
+
+
+Jotai 的状态存在于 React 中，但有时你可能需要在 React 外部与其交互。
+
+## createStore
+
+[`createStore`](../core/store.mdx#createstore) 提供了一个 Store 接口，可用于存储你的原子。通过 Store，你可以在 React 外部访问和修改原子的状态。
+
+```jsx
+import { atom, useAtomValue, createStore, Provider } from 'jotai'
+
+const timeAtom = atom(0)
+const store = createStore()
+
+store.set(timeAtom, (prev) => prev + 1) // Update atom's value
+store.get(timeAtom) // Read atom's value
+
+function Component() {
+  const time = useAtomValue(timeAtom) // Inside React
+  return (
+    <div className="App">
+      <h1>{time}</h1>
+    </div>
+  )
+}
+
+export default function App() {
+  return (
+    <Provider store={store}>
+      <Component />
+    </Provider>
+  )
+}
+```
+
+### 示例
+
+[在 StackBlitz 中打开](https://stackblitz.com/edit/vitejs-vite-m1h61f?file=src%2FApp.tsx)

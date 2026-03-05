@@ -1,0 +1,79 @@
+---
+title: Provider
+description: This doc describes core `jotai` bundle.
+nav: 2.04
+keywords: provider,usestore,ssr
+---
+
+{/*
+translation-source-path: core/provider.mdx
+translation-source-ref: v2.18.0
+translation-source-hash: eec3516fe142fb6576b1ba37d3af071762eb6e3d40cce761384b9bd677149723
+translation-status: translated
+*/}
+
+
+## Provider
+
+`Provider` 组件用于为组件子树提供状态。可以为多个子树使用多个 Provider，甚至可以嵌套使用。其工作方式与 React Context 完全相同。
+
+如果在没有 Provider 的组件树中使用原子，则会使用默认状态。这就是所谓的无 Provider 模式（provider-less mode）。
+
+Provider 主要有三个用途：
+
+1. 为不同的子树提供不同的状态。
+2. 接受原子的初始值。
+3. 通过重新挂载来清除所有原子。
+
+```jsx
+const SubTree = () => (
+  <Provider>
+    <Child />
+  </Provider>
+)
+```
+
+### 签名
+
+```ts
+const Provider: React.FC<{
+  store?: Store
+}>
+```
+
+原子配置本身不持有值。原子的值存储在独立的 Store 中。Provider 是一个包含 Store 并在组件树下提供原子值的组件。Provider 的工作方式类似于 React context provider。如果不使用 Provider，则以无 Provider 模式运行，使用默认 Store。当需要为不同的组件树持有不同的原子值时，就需要使用 Provider。Provider 可以接受一个可选的 `store` prop。
+
+```jsx
+const Root = () => (
+  <Provider>
+    <App />
+  </Provider>
+)
+```
+
+### `store` prop
+
+Provider 接受一个可选的 `store` prop，可用于 Provider 子树。
+
+#### 示例
+
+```jsx
+const myStore = createStore()
+
+const Root = () => (
+  <Provider store={myStore}>
+    <App />
+  </Provider>
+)
+```
+
+## useStore
+
+此 hook 返回组件树中的 Store。
+
+```jsx
+const Component = () => {
+  const store = useStore()
+  // ...
+}
+```

@@ -1,0 +1,63 @@
+---
+title: Redux
+description: This doc describes Redux extension.
+nav: 4.98
+keywords: redux
+published: false
+---
+
+{/*
+translation-source-path: extensions/redux.mdx
+translation-source-ref: v2.18.0
+translation-source-hash: 1b50870396eaa2d710b27e053d6b05c35058fe78e48800de4a905de7f1b616c9
+translation-status: translated
+*/}
+
+
+Jotai 的状态存在于 React 中，但有时与 React 外部的世界交互也很有用。
+
+Redux 提供了一个 store 接口，可用于存储一些值并与 Jotai 中的原子同步。
+
+### 安装
+
+你需要安装 `redux` 和 `jotai-redux` 才能使用此功能。
+
+```
+npm install redux jotai-redux
+```
+
+## atomWithStore
+
+`atomWithStore` 使用 redux store 创建一个新原子。
+这是一个双向绑定，你可以从两端修改值。
+
+```jsx
+import { useAtom } from 'jotai'
+import { atomWithStore } from 'jotai-redux'
+import { createStore } from 'redux'
+
+const initialState = { count: 0 }
+const reducer = (state = initialState, action: { type: 'INC' }) => {
+  if (action.type === 'INC') {
+    return { ...state, count: state.count + 1 }
+  }
+  return state
+}
+const store = createStore(reducer)
+const storeAtom = atomWithStore(store)
+
+const Counter = () => {
+  const [state, dispatch] = useAtom(storeAtom)
+
+  return (
+    <>
+      count: {state.count}
+      <button onClick={() => dispatch({ type: 'INC' })}>button</button>
+    </>
+  )
+}
+```
+
+### 示例
+
+[Open in StackBlitz](https://stackblitz.com/edit/vitejs-vite-qqsnwc?file=src%2FApp.tsx)

@@ -1,0 +1,68 @@
+---
+title: Optics
+description: This doc describes Optics-ts extension.
+nav: 4.09
+keywords: optics
+---
+
+{/*
+translation-source-path: extensions/optics.mdx
+translation-source-ref: v2.18.0
+translation-source-hash: c5e44a9bec7f8a8c3644634a10b4ccc405e49009e33e02e1fbc6c9c065546515
+translation-status: translated
+*/}
+
+
+### 安装
+
+你需要安装 `optics-ts` 和 `jotai-optics` 才能使用此功能。
+
+```
+npm install optics-ts jotai-optics
+```
+
+## focusAtom
+
+`focusAtom` 基于你传入的焦点创建一个新原子。它会创建一个聚焦于指定部分的派生原子，
+当派生原子更新时，源原子会收到更新通知，并在源原子上执行等价的更新。
+
+看这个例子：
+
+```js
+const baseAtom = atom({ a: 5 }) // PrimitiveAtom<{a: number}>
+const derivedAtom = focusAtom(baseAtom, (optic) => optic.prop('a')) // PrimitiveAtom<number>
+```
+
+基本上，我们从一个同时具有 getter 和 setter 的 `PrimitiveAtom<{a: number}>` 开始，然后使用 `focusAtom` 聚焦到 `baseAtom` 的 `a` 属性上，得到了一个 `PrimitiveAtom<number>`。值得注意的是，这个 `derivedAtom` 不仅是 getter，也是 setter。如果 `derivedAtom` 被更新，`baseAtom` 上也会执行等价的更新。
+
+下面的示例比较简单，但可以作为起点。`focusAtom` 支持多种光学类型，包括 `Lens`、`Prism`、`Isomorphism`。
+
+要查看更高级的光学用法，请参阅：https://github.com/akheron/optics-ts
+
+### 示例
+
+```jsx
+import { atom } from 'jotai'
+import { focusAtom } from 'jotai-optics'
+
+const objectAtom = atom({ a: 5, b: 10 })
+const aAtom = focusAtom(objectAtom, (optic) => optic.prop('a'))
+const bAtom = focusAtom(objectAtom, (optic) => optic.prop('b'))
+
+const Controls = () => {
+  const [a, setA] = useAtom(aAtom)
+  const [b, setB] = useAtom(bAtom)
+  return (
+    <div>
+      <span>Value of a: {a}</span>
+      <span>Value of b: {b}</span>
+      <button onClick={() => setA((oldA) => oldA + 1)}>Increment a</button>
+      <button onClick={() => setB((oldB) => oldB + 1)}>Increment b</button>
+    </div>
+  )
+}
+```
+
+#### Stackblitz
+
+[Open in StackBlitz](https://stackblitz.com/edit/vitejs-vite-jjunki?file=src%2FApp.tsx)

@@ -1,0 +1,139 @@
+---
+title: Async
+description: This doc describes about the behavior with async.
+nav: 8.99
+keywords: async
+published: false
+---
+
+{/*
+translation-source-path: guides/async.mdx
+translation-source-ref: v2.18.0
+translation-source-hash: ef9b1fe3e40a6d17265fa6c99acd8ebd03bea914d5789715a69e8e14d9fcd662
+translation-status: translated
+*/}
+
+
+使用异步原子，你可以轻松地在原子中直接访问和管理真实世界的数据。
+
+我们可以将它们分为两大类：
+
+- 异步读取原子：当你尝试获取其值时，异步请求会立即发起。你可以把它们理解为"智能 getter"。
+- 异步写入原子：异步请求在特定时刻发起。你可以把它们理解为"action"。
+
+## 异步读取原子
+
+原子的 `read` 函数可以返回一个 promise。
+
+```js
+const countAtom = atom(1)
+const asyncAtom = atom(async (get) => get(countAtom) * 2)
+```
+
+Jotai 天然利用 `Suspense` 来处理异步流程。
+
+```jsx
+const ComponentUsingAsyncAtoms = () => {
+  const [num] = useAtom(asyncAtom)
+  // 这里 `num` 始终是 `number` 类型，即使 asyncAtom 返回的是 Promise
+}
+const App = () => {
+  return (
+    <Suspense fallback={/* 挂起时显示的内容 */}>
+      <ComponentUsingAsyncAtoms />
+    </Suspense>
+  )
+}
+```
+
+你也可以使用 [`loadable` API](../utilities/async.mdx) 包装原子，从而避免 Jotai 默认的 Suspense 行为。
+
+如果另一个原子使用了异步原子，它会返回一个 promise。因此，我们也需要将该原子设为异步的。
+
+```js
+const anotherAtom = atom(async (get) => (await get(asyncAtom)) / 2)
+```
+
+这同样适用于带有写入函数的原子。
+
+```js
+const asyncAtom = atom(async (get) => ...)
+const writeAtom = atom(null, async (get, set, payload) => {
+  await get(asyncAtom)
+  // ...
+})
+```
+
+## 异步写入原子
+
+异步写入原子是另一种异步原子。当原子的 `write` 函数返回一个 promise 时，它就是异步写入原子。
+
+```js
+const countAtom = atom(1)
+const asyncIncrementAtom = atom(null, async (get, set) => {
+  // await something
+  set(countAtom, get(countAtom) + 1)
+})
+
+const Component = () => {
+  const [, increment] = useAtom(asyncIncrementAtom)
+  const handleClick = () => {
+    increment()
+  }
+  // ...
+}
+```
+
+## 有时异步
+
+Jotai 有一个有趣的模式：可以在异步和同步之间切换，从而在需要时触发 Suspense。
+
+```js
+const request = async () => fetch('https://...').then((res) => res.json())
+const baseAtom = atom(0)
+const Component = () => {
+  const [value, setValue] = useAtom(baseAtom)
+  const handleClick = () => {
+    setValue(request()) // 将挂起直到请求完成
+  }
+  // ...
+}
+```
+
+### 在 TypeScript 中的用法
+
+在 TypeScript 中，`atom(0)` 会被推断为 `PrimitiveAtom<number>`，它不能接受 `Promise<number>` 作为值，因此上面的代码无法通过类型检查。为了解决这个问题，你需要显式指定原子的类型，并将 `Promise<number>` 加入可接受的值类型中。
+
+```ts
+const baseAtom = atom<number | Promise<number>>(0) // 同时接受同步和异步值
+```
+
+## 永久异步
+
+有时你可能想要一直挂起，直到某个不确定的时刻（或永远挂起）。
+
+```js
+const baseAtom = atom(new Promise(() => {})) // 将一直挂起，直到被 set 赋值
+```
+
+## Suspense
+
+异步支持是 Jotai 的一等特性。它在核心层面完全利用了 React Suspense。
+
+> 严格来说，在 React 17 中，除了 React.lazy 之外的 Suspense 用法仍然是不受支持/未文档化的。如果这构成阻碍，你仍然可以使用 [`loadable` API](../utilities/async.mdx) 来避免挂起。
+
+要使用异步原子，你需要用 `<Suspense>` 包裹组件树。
+
+> 如果使用了 `<Provider>`，请确保在该 `<Provider>` 内部放置**至少一个** `<Suspense>`；否则可能导致渲染时的无限循环。
+
+```jsx
+const App = () => (
+  <Provider>
+    <Suspense fallback="Loading...">
+      <Layout />
+    </Suspense>
+  </Provider>
+)
+```
+
+在组件树中放置更多的 `<Suspense>` 也是可以的，而且推荐这样做，以充分利用 Jotai 内置的异步处理能力。

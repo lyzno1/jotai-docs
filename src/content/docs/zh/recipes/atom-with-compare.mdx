@@ -1,0 +1,73 @@
+---
+title: atomWithCompare
+nav: 9.05
+keywords: creators,compare
+---
+
+{/*
+translation-source-path: recipes/atom-with-compare.mdx
+translation-source-ref: v2.18.0
+translation-source-hash: 82e16e9c49a125e68590e272736ed8aa2925acfc1708da9f316dcd9a80ab8ad1
+translation-status: translated
+*/}
+
+
+> `atomWithCompare` 创建一个原子，仅在自定义比较函数 `areEqual(prev, next)` 返回 false 时才触发更新。
+
+这可以帮助你忽略对应用无关紧要的状态变更，从而避免不必要的重新渲染。
+
+注意：Jotai 内部使用 `Object.is` 来比较值的变化。如果 `areEqual(a, b)` 返回 false，但 `Object.is(a, b)` 返回 true，Jotai 不会触发更新。
+
+```ts
+import { atomWithReducer } from 'jotai/utils'
+
+export function atomWithCompare<Value>(
+  initialValue: Value,
+  areEqual: (prev: Value, next: Value) => boolean,
+) {
+  return atomWithReducer(initialValue, (prev: Value, next: Value) => {
+    if (areEqual(prev, next)) {
+      return prev
+    }
+
+    return next
+  })
+}
+```
+
+以下示例展示了如何创建一个忽略浅相等更新的原子：
+
+```ts
+import { atomWithCompare } from 'XXX'
+import { shallowEquals } from 'YYY'
+import { CSSProperties } from 'react'
+
+const styleAtom = atomWithCompare<CSSProperties>(
+  { backgroundColor: 'blue' },
+  shallowEquals,
+)
+```
+
+在组件中使用：
+
+```jsx
+const StylePreview = () => {
+  const [styles, setStyles] = useAtom(styleAtom)
+
+  return (
+    <div>
+      <div styles={styles}>Style preview</div>
+
+      {/* 连续点击两次只会触发一次渲染 */}
+      <button onClick={() => setStyles({ ...styles, backgroundColor: 'red' })}>
+        Set background to red
+      </button>
+
+      {/* 连续点击两次只会触发一次渲染 */}
+      <button onClick={() => setStyles({ ...styles, fontSize: 32 })}>
+        Enlarge font
+      </button>
+    </div>
+  )
+}
+```

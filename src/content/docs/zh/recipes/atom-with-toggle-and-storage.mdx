@@ -1,0 +1,50 @@
+---
+title: atomWithToggleAndStorage
+nav: 9.05
+keywords: creators,storage
+---
+
+{/*
+translation-source-path: recipes/atom-with-toggle-and-storage.mdx
+translation-source-ref: v2.18.0
+translation-source-hash: bba420f89eea48528edca9bc0a365334f912ae3ebdf19b7b5ac0b1ea3394b172
+translation-status: translated
+*/}
+
+
+> `atomWithToggleAndStorage` 类似于 `atomWithToggle`，但会在状态变化时自动将其持久化到指定的存储中，底层使用 [`atomWithStorage`](../utilities/storage.mdx)。
+
+以下是源码：
+
+```ts
+import { WritableAtom, atom } from 'jotai'
+import { atomWithStorage } from 'jotai/utils'
+
+export function atomWithToggleAndStorage(
+  key: string,
+  initialValue?: boolean,
+  storage?: any,
+): WritableAtom<boolean, [boolean?], void> {
+  const anAtom = atomWithStorage(key, initialValue, storage)
+  const derivedAtom = atom(
+    (get) => get(anAtom),
+    (get, set, nextValue?: boolean) => {
+      const update = nextValue ?? !get(anAtom)
+      void set(anAtom, update)
+    },
+  )
+
+  return derivedAtom as WritableAtom<boolean, [boolean?], void>
+}
+```
+
+使用方式：
+
+```js
+import { atomWithToggleAndStorage } from 'XXX'
+
+// 初始值为 false，并存储在 localStorage 中，键名为 "isActive"
+const isActiveAtom = atomWithToggleAndStorage('isActive')
+```
+
+在组件中的用法与 `atomWithToggle` 相同。

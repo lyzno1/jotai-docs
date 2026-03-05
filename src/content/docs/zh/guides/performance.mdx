@@ -1,0 +1,118 @@
+---
+title: Performance
+description: How to limit extra re-renders
+nav: 8.08
+keywords: performance
+---
+
+{/*
+translation-source-path: guides/performance.mdx
+translation-source-ref: v2.18.0
+translation-source-hash: 9ccebefb181dd07ac48271f82734a07affe22a7fd0f3cd8d5f0e952fac597c9b
+translation-status: translated
+*/}
+
+
+**注意**：本指南仍有改进空间，目前仅供参考。
+
+Jotai 和 React 提供了相当多的工具来管理应用生命周期中发生的重新渲染。
+首先，请阅读关于[渲染和提交之间的区别](https://legacy.reactjs.org/blog/2018/09/10/introducing-the-react-profiler.html#browsing-commits)，因为在继续之前理解这一点非常重要。
+
+### 廉价渲染
+
+如 [core 章节](../core/atom.mdx) 所述，由于 React 18 的默认行为（也是总体上的良好实践），你需要确保组件函数是_幂等_的。
+它们在渲染阶段会被多次调用，即使在挂载时也是如此。所以我们必须始终保持渲染的低开销！
+
+#### 耗时计算
+
+始终将耗时计算放在 React 生命周期之外（例如放在 action 中）。
+
+不推荐：
+
+```js
+// Heavy computation for each item
+const selector = (s) => s.filter(heavyComputation)
+const Profile = () => {
+  const [computed] = useAtom(selectAtom(friendsAtom, selector))
+}
+```
+
+推荐：
+
+```js
+const friendsAtom = atom([])
+const fetchFriendsAtom = atom(null, async (get, set, payload) => {
+  // Fetch all friends
+  const res = await fetch('https://...')
+  // Make heavy computation once only
+  const computed = res.filter(heavyComputation)
+  set(friendsAtom, computed)
+})
+// Usage in components
+const Profile = () => {
+  const [friends] = useAtom(friendsAtom)
+}
+```
+
+#### 小组件
+
+被观察的原子应该只让应用中需要更新的小部分重新渲染。React 需要比较的内容越少，渲染时间就越短。
+
+不推荐：
+
+```jsx
+const Profile = () => {
+  const [name] = useAtom(nameAtom)
+  const [age] = useAtom(ageAtom)
+  return (
+    <>
+      <div>{name}</div>
+      <div>{age}</div>
+    </>
+  )
+}
+```
+
+推荐：
+
+```jsx
+const NameComponent = () => {
+  const [name] = useAtom(nameAtom)
+  return <div>{name}</div>
+}
+const AgeComponent = () => {
+  const [age] = useAtom(ageAtom)
+  return <div>{age}</div>
+}
+const Profile = () => {
+  return (
+    <>
+      <NameComponent />
+      <AgeComponent />
+    </>
+  )
+}
+```
+
+### 按需渲染
+
+通常，主要的性能开销来自于重新渲染了不需要更新的部分，或者渲染次数远超必要。
+
+我们有一些工具来控制 React"何时"应该渲染组件。如果你还不了解 `useMemo` 和 `useCallback` 的用法，请先查看 React 官方文档，然后再继续。
+它们在减少不必要渲染方面非常有用，特别是在应用不够流畅的时候。
+
+而 Jotai 也提供了自己的一套工具来处理原子"何时"应该触发重新渲染。
+
+- 开箱即用地，Jotai 鼓励你将数据拆分为原子级别的粒度，因此每个原子独立存储，只在自身值变化时触发重新渲染。
+- `selectAtom` 允许你订阅大对象的特定部分，仅在该部分值变化时重新渲染。
+- `focusAtom` 与 selectAtom 类似，但会创建一个新原子来表示该部分，并提供 setter 来方便地更新该特定部分。
+- `splitAtom` 为动态列表完成 selectAtom/focusAtom 的工作。
+
+虽然这看起来很简单，但它确实易于理解。这正是设计目标——保持简单以保持高效。
+
+#### 频繁更新还是稀少更新
+
+问问自己：你的原子通常是频繁更新还是较少更新。
+想象一个几乎每秒都在变化的对象原子，使用 `focusAtom` 来"聚焦"这个对象的特定属性可能并不是最佳选择，因为所有属性反正都会在同一时间重新渲染，所以最好不要增加额外开销、不要创建更多原子。
+
+另一方面，如果你的对象中有些属性很少变化，更重要的是它们的变化是独立于其他属性的，那么你可能需要使用 `focusAtom` 或 `selectAtom` 来避免不必要的渲染。

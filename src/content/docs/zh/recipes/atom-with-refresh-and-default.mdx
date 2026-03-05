@@ -1,0 +1,83 @@
+---
+title: atomWithRefreshAndDefault
+nav: 9.07
+keywords: creators,refresh,default
+---
+
+{/*
+translation-source-path: recipes/atom-with-refresh-and-default.mdx
+translation-source-ref: v2.18.0
+translation-source-hash: fa5f500f8d7a0bb48ff46796d323ad37fcffbf0a4f071a622b25bd501a0d00a1
+translation-status: translated
+*/}
+
+
+> 这是 [atomWithDefault](../utilities/resettable.mdx#atomwithdefault) 的另一种实现方式
+
+### 回顾 atomWithDefault 的行为
+
+如 atomWithDefault 章节的示例代码所示，当更新由其创建的原子后，两个原子之间的关联会断开，例如 `count2Atom = atomWithDefault((get) => get(count1Atom) * 2)`。
+我们来确认一下具体发生了什么：
+
+- 1. 点击 "increment count1"，count1 变为 2，count2 变为 4
+- 2. 点击 "increment count2"，count1 仍为 2，count2 变为 5（关联已断开！）
+
+更新 count2Atom 后，这两个原子不再有关联。因此：
+
+- 点击 "increment count1" 只会递增 count1
+- 即使重置 count2Atom，这种依赖关系也不会恢复
+
+### 动机
+
+在某些场景下：
+
+- 断开关联并重置后，它们应该恢复原有的关系
+- 当原始原子更新时，派生原子应基于此被重置
+- 我们想重置所有派生原子，但操作要尽可能简单
+
+如何实现这些场景？
+以下是一种声明式方式，创建一个可刷新的原子函数来替代 atomWithDefault。
+
+```js
+const refreshCountAtom = atom(0)
+
+const baseDataAtom = atom(1) // 原始数据，例如基础的 count1Atom
+const dataAtom = atom(
+  (get) => {
+    get(refreshCountAtom) // 这在 atomWithRefresh 中有介绍
+    return get(baseDataAtom)
+  },
+  (get, set, update) => {
+    set(baseDataAtom, update)
+  },
+)
+
+const atomWithRefreshAndDefault = (refreshAtom, getDefault) => {
+  const overwrittenAtom = atom(null)
+  return atom(
+    (get) => {
+      const lastState = get(overwrittenAtom)
+      if (lastState && lastState.refresh === get(refreshAtom)) {
+        return lastState.value
+      }
+      return getDefault(get)
+    },
+    (get, set, update) => {
+      set(overwrittenAtom, { refresh: get(refreshAtom), value: update })
+    },
+  )
+}
+
+// 这是 `atomWithDefault((get) => get(count1Atom) * 2)` 的替代方案
+const refreshableAtom = atomWithRefreshAndDefault(
+  refreshCountAtom,
+  (get) => get(dataAtom) * 2,
+)
+
+// 只需更新一个原子即可重置
+const resetRootAtom = atom(null, (get, set) => {
+  set(refreshCountAtom, get(refreshCountAtom) + 1)
+})
+```
+
+[在 StackBlitz 中打开](https://stackblitz.com/edit/vitejs-vite-1m7ce3?file=src%2FApp.tsx)

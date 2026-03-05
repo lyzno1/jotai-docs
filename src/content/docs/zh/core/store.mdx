@@ -1,0 +1,45 @@
+---
+title: Store
+description: This doc describes core `jotai` bundle.
+nav: 2.03
+keywords: store,createstore,getdefaultstore,defaultstore
+---
+
+{/*
+translation-source-path: core/store.mdx
+translation-source-ref: v2.18.0
+translation-source-hash: 13693e5324504adab4265e99a55cf483dfbdc59e8f67b1ba72745409ed5830ab
+translation-status: translated
+*/}
+
+
+## createStore
+
+此函数用于创建一个新的空 Store。创建的 Store 可以传入 `Provider`。
+
+Store 有三个方法：`get` 用于获取原子的值，`set` 用于设置原子的值，`sub` 用于订阅原子的变化。
+
+```jsx
+const myStore = createStore()
+
+const countAtom = atom(0)
+myStore.set(countAtom, 1)
+const unsub = myStore.sub(countAtom, () => {
+  console.log('countAtom value is changed to', myStore.get(countAtom))
+})
+// unsub() to unsubscribe
+
+const Root = () => (
+  <Provider store={myStore}>
+    <App />
+  </Provider>
+)
+```
+
+## getDefaultStore
+
+此函数返回在无 Provider 模式下使用的默认 Store。
+
+```js
+const defaultStore = getDefaultStore()
+```

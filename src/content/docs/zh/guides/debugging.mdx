@@ -1,0 +1,174 @@
+---
+title: Debugging
+nav: 8.07
+keywords: debug,labels,devtools,freeze
+---
+
+{/*
+translation-source-path: guides/debugging.mdx
+translation-source-ref: v2.18.0
+translation-source-hash: 57cb9fd53318643fcf35533d5568de35a5d4d4492b5ecb4f55310e2250995dfb
+translation-status: translated
+*/}
+
+
+在简单的应用中，`console.log` 可能是调试原子最好的工具。但当应用变得更大、需要使用更多原子时，日志打印就不再是调试原子的好方式了。
+Jotai 提供了两种调试原子的方式：**React Dev Tools** 和 **Redux Dev Tools**。如果只是读取值和简单调试，React Dev Tools 可能就够了；但对于时间旅行和设置值等更复杂的任务，Redux Dev Tools 会是更好的选择。
+
+## 调试标签
+
+值得一提的是，Jotai 中有一个叫做**调试标签**的概念，它可以帮助我们调试。
+默认情况下，每个 Jotai 状态的标签类似于 `1:<no debugLabel>`，其中的数字是自动分配给每个原子的内部 `key`。你可以通过 `debugLabel` 给原子添加标签，使它们更容易区分。
+
+```js
+const countAtom = atom(0)
+// countAtom's debugLabel by default is 'atom1'
+if (process.env.NODE_ENV !== 'production') {
+  countAtom.debugLabel = 'count'
+  // debugLabel is 'count' now
+}
+```
+
+Jotai 同时提供了 Babel 和 SWC 插件，能够自动为每个原子添加 debugLabel，让事情变得更简单。更多信息请查看 [jotai-babel](https://github.com/jotaijs/jotai-babel) 和 [@swc-jotai/debug-label](https://github.com/pmndrs/jotai/blob/main/docs/tools/swc.mdx)。
+
+## 使用 React Dev Tools
+
+你可以使用 [React Dev Tools](https://chrome.google.com/webstore/detail/react-developer-tools/fmkadmapgofadopljbjfkapdkoienihi) 来检查 Jotai 的状态。这是通过在自定义 hook 内部使用 [useDebugValue](https://react.dev/reference/react/useDebugValue) 实现的。请注意，它仅在开发模式下有效（即 `NODE_ENV === 'development'`）。
+
+### useAtom
+
+`useAtom` 会对原子值调用 `useDebugValue`。因此，如果你在 React Dev Tools 中选择一个使用了 Jotai 原子的组件，你将看到该组件中使用的每个原子都有一个 "Atom" hook，以及它当前的值。
+
+### useAtomsDebugValue
+
+`useAtomsDebugValue` 会捕获 Provider 下组件树中的所有原子（或在无 Provider 模式下捕获整个树中的原子），并对所有原子值调用 `useDebugValue`。
+如果你在 React Dev Tools 中导航到包含 `useAtomsDebugValue` 的组件，你可以看到一个名为 "AtomsDebugValue" 的自定义 hook，它允许你查看所有原子的值及其依赖关系。
+
+一个常见的用法是将这个 hook 放在 `Provider` 组件的正下方：
+
+```jsx
+const DebugAtoms = () => {
+  useAtomsDebugValue()
+  return null
+}
+
+const Root = () => (
+  <Provider>
+    <DebugAtoms />
+    <App />
+  </Provider>
+)
+```
+
+## 使用 Redux DevTools
+
+你也可以使用 [Redux DevTools](https://chrome.google.com/webstore/detail/redux-devtools/lmhkpmbekcpmknklioeibfkpmmfibljd) 来检查原子，它提供了时间旅行和值分发等多种功能。
+
+### [useAtomDevtools](https://jotai.org/docs/api/devtools#use-atom-devtools)
+
+> `useAtomDevtools` 是一个 React hook，用于管理特定原子的 ReduxDevTools 扩展。
+
+如果你想调试某个特定的原子，`useAtomDevtools` 是一个不错的选择。
+
+```js
+const countAtom = atom(0)
+// setting countAtom.debugLabel is recommended if we have more atoms
+
+function Counter() {
+  const [count, setCount] = useAtom(countAtom)
+  useAtomDevtools(countAtom)
+}
+```
+
+现在如果我们调用 `setCount`，可以看到 Redux Dev Tools 会立即记录这些变更。
+
+![](https://lh3.googleusercontent.com/pw/AP1GczMgeYQOyCAc69gJIAcRBtKO9BOUEE3SQB5Bl-7IScJfChWGnVb3B0OmlhrjK8caQVnj-HtyN1cpv1l1K9kE4pxwapUwu_2OB-dO_G18ZUC1NbDJFiXYRW9jX8OeDBJeWg1Qx9_IdkfoaoIin90A8gSE=w828-h268-s-no-gm)
+![]()
+
+#### 时间旅行
+
+有时我们需要切换到原子状态的某个特定值，时间旅行功能使这成为可能。
+你可以在 devtools 中悬停在每个 action 上，看到 **Jump** 选项，点击即可切换到该特定值。
+
+#### 暂停
+
+如果我们不想记录原子上的变更，可以使用**暂停**功能来停止监听。
+
+![](https://lh3.googleusercontent.com/pw/AP1GczP8hTBFtwlx0BJGGbbcXgfhMNG2Vz_uozdVnrTJHwMb1gKx55TP59WgvsMwgIyExwscgYZSpYDmxCJXjk_pKy6wP-K-0p287lkRXdTZEf074xUZr8fnIpkwg-zN14VXZ2STet1sVgTTawm49mc8Oygb=w395-h87-s-no-gm)
+
+#### 分发
+
+可以使用**分发**功能来设置原子的值。点击 **Show Dispatcher** 按钮即可操作。
+![](https://lh3.googleusercontent.com/pw/AP1GczMNn6aXTA7K8ZFzUj17I40cm0o7joOG6E76Q6UVnXYJ3TO7ItRI6Jr1EIxogfY9P2xkiQfyYqB7_aU--R_vdSyNXAtTfPuxxLymApRoZov0-6ZHS7mmxxxD4Ku1JnqTRyPyZaQHyQPkq8j4CciQaISV=w832-h149-s-no-gm)
+这会将 `countAtoms` 的值设置为 `5`。
+
+> 注意，该值会通过 JSON.parse 解析，因此请传入支持的值类型。
+
+### [useAtomsDevtools](../tools/devtools.mdx)
+
+> `useAtomsDevtools` 是 `useAtomDevtools` 的全量版本，它显示 Store 中所有原子的状态，而不是只显示某一个。
+
+如果你想在一个地方追踪所有原子，我们推荐使用这个 hook。这意味着在此 hook 下方（React 树中）的每个原子上的每个操作都会被 Redux Dev Tools 捕获。
+
+`useAtomDevtools` 的所有功能在这个 hook 中都受支持，此外还有一个额外的功能——提供关于原子依赖关系的更多信息，例如：
+
+```json
+{
+  "values": {
+    "atom1:count": 0,
+    "atom2:doubleCount": 0,
+    "atom3:half": 0,
+    "atom4:sum": 0
+  },
+  "dependents": {
+    "atom1:count": ["atom1:count", "atom2:doubleCount", "atom4:sum"],
+    "atom2:doubleCount": ["atom3:half", "atom4:sum"],
+    "atom3:half": ["atom4:sum"],
+    "atom4:sum": []
+  }
+}
+```
+
+## 冻结原子
+
+为了发现意外修改存储在原子中对象的 bug，你可以使用 `jotai/utils` 中的 `freezeAtom` 或 `freezeAtomCreator`。
+它们返回的原子值会通过 `Object.freeze` 被深度冻结。
+
+### freezeAtom
+
+```ts
+freezeAtom(anAtom): AtomType
+```
+
+`freezeAtom` 接受一个现有的原子并将其"冻结"。
+它返回同一个原子。
+原子的值将通过 `Object.freeze` 被深度冻结。
+这对于发现无意中修改对象（状态）的 bug 非常有用，因为这类修改可能导致意想不到的行为。
+你可以对所有原子使用 `freezeAtom` 来防止这种情况。
+
+#### 参数
+
+**anAtom**（必填）：你希望冻结的原子。
+
+#### 示例
+
+```js
+import { atom } from 'jotai'
+import { freezeAtom } from 'jotai/utils'
+
+const objAtom = freezeAtom(atom({ count: 0 }))
+```
+
+### freezeAtomCreator
+
+如果需要，你可以为 `freezeAtom` 定义一个工厂函数。
+
+```ts
+import { freezeAtom } from 'jotai/utils'
+
+export function freezeAtomCreator<
+  CreateAtom extends (...args: unknown[]) => Atom<unknown>,
+>(createAtom: CreateAtom): CreateAtom {
+  return ((...args: unknown[]) => freezeAtom(createAtom(...args))) as never
+}
+```

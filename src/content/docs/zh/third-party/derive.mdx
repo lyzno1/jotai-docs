@@ -1,0 +1,151 @@
+---
+title: Derive
+description: This doc describes Derive extension.
+nav: 5.01
+keywords: derive,derived,async,zalgo,suspense,promise,react
+---
+
+{/*
+translation-source-path: third-party/derive.mdx
+translation-source-ref: v2.18.0
+translation-source-hash: 64c89b8bb49117c2cede23d6d4a47157231381cf000674e363c56c3221a4a08a
+translation-status: translated
+*/}
+
+
+#### 什么场景下有用？
+
+- 当缓存的局部更新导致微短暂的 Suspense 挂起
+- 当不必要的重新计算导致性能问题
+
+Jotai 提供了强大的原语，用于在 Web 框架（如 React）之外处理异步数据，并允许 UI 和业务逻辑与数据层正确集成。许多数据获取集成方案通过原子提供对客户端缓存的访问。当缓存尚未填充时，原子必须解析为值的 Promise。然而，如果值已经存在于缓存中，且我们执行了乐观更新，那么值可以立即在下游可用。
+
+使用这些双重特性（有时异步、有时同步）的原子作为基础构建数据图，如果处理不当，可能导致不必要的重新渲染、过时的值以及微短暂的 Suspense 挂起（在 React 中）。
+
+**jotai-derive** 提供了一个原语，用于构建异步数据图，在值可用时立即处理（要么等待它们，要么同步地处理）。
+
+### 安装
+
+你需要安装 `jotai-derive` 才能使用此功能。
+
+```
+npm install jotai-derive
+```
+
+## derive
+
+假设我们有一个_双重特性_的原子，意味着有时我们还不知道值（例如正在获取数据），
+但有时我们在本地更新原子并可以立即知道其值（例如乐观更新）。
+
+```ts
+// `jotai-derive` 适用于大多数数据获取方案，不仅限于 `jotai-apollo`
+import { atomWithQuery } from 'jotai-apollo';
+
+// 一个双重特性原子的示例
+const userAtom: Atom<User | Promise<User>> =
+  atomWithQuery(...);
+
+```
+
+以下是通常创建派生原子的方式。缺点是始终使用 await（即使值已经可用）
+会引入不必要的延迟和重新计算。
+
+```ts
+// 不使用 `jotai-derive`
+
+import { atom } from 'jotai'
+
+// 类型为 Atom<Promise<string>>，即使
+// get(userAtom) 并不总是返回 promise，
+// 这意味着我们本可以同步计算 `uppercaseNameAtom`。
+const uppercaseNameAtom = atom(async (get) => {
+  const user = await get(userAtom)
+  return user.name.toUppercase()
+})
+```
+
+以下是使用 `jotai-derive` 创建更紧凑的异步数据处理管道的方式。
+
+```ts
+// 使用 `jotai-derive`
+
+import { derive } from 'jotai-derive'
+
+// Atom<string | Promise<string>>
+const uppercaseNameAtom = derive(
+  [userAtom], // 仅在必要时才会 await
+  (user) => user.name.toUppercase(),
+)
+```
+
+### 多个异步依赖
+
+要从多个原子派生值，数组可以接受多个原子。对应的值会按相同顺序
+传入生产者函数。
+
+```ts
+import { derive } from 'jotai-derive'
+
+// Atom<string | Promise<string>>
+const welcomeMessageAtom = derive(
+  [userAtom, serverNameAtom],
+  (user, serverName) => `Welcome ${user.name} to ${serverName}!`,
+)
+```
+
+## soon
+
+对于更高级的用法，例如**条件依赖**，可以使用 `soon` 和 `soonAll` 函数
+来替代（`derive` 是它们的实用封装）。
+
+### 条件依赖
+
+```ts
+// 使用管道可以让直接使用 `soon` 时代码更整洁。
+import { pipe } from 'remeda';
+import { soon } from 'jotai-derive';
+
+// Atom<RestrictedItem | Promise<RestrictedItem>>
+const queryAtom = ...;
+
+// Atom<boolean | Promise<boolean>>
+const isAdminAtom = ...;
+
+// Atom<null | RestrictedItem | Promise<null | RestrictedItem>>
+const restrictedItemAtom = atom((get) =>
+  pipe(
+    get(isAdminAtom),
+    soon((isAdmin) => (isAdmin ? get(queryAtom) : null))
+  )
+);
+```
+
+### 条件依赖（多个条件）
+
+```ts
+// 使用管道可以让直接使用 `soon` 时代码更整洁。
+import { pipe } from 'remeda';
+import { soon, soonAll } from 'jotai-derive';
+
+// Atom<RestrictedItem | Promise<RestrictedItem>>
+const queryAtom = ...;
+
+// Atom<boolean | Promise<boolean>>
+const isAdminAtom = ...;
+
+// Atom<boolean | Promise<boolean>>
+const enabledAtom = ...;
+
+// Atom<null | RestrictedItem | Promise<null | RestrictedItem>>
+const restrictedItemAtom = atom((get) =>
+  pipe(
+    soonAll(get(isAdminAtom), get(enabledAtom)),
+    soon(([isAdmin, enabled]) => (isAdmin && enabled ? get(queryAtom) : null))
+  )
+);
+
+```
+
+## 演示
+
+[在 CodeSandbox 中打开](https://codesandbox.io/s/jotai-derive-example-7422pk)

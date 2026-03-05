@@ -1,0 +1,271 @@
+---
+title: v2 API migration
+description: New "Async" API
+nav: 8.0
+---
+
+{/*
+translation-source-path: guides/migrating-to-v2-api.mdx
+translation-source-ref: v2.18.0
+translation-source-hash: a513e44cbef8a2559b130fc72041e7277a20d7e15f6f6044841b94ba9c1fa7ee
+translation-status: translated
+*/}
+
+
+RFC: https://github.com/pmndrs/jotai/discussions/1514
+
+Jotai v1 于 2022 年 6 月发布，此后收到了各种反馈。
+React 也提出了对 promise 的一等支持。
+Jotai v2 将引入新的 API。
+
+遗憾的是，新特性伴随着一些破坏性变更。
+
+### 新特性
+
+#### Vanilla 库
+
+Jotai 现在将 vanilla（非 React）函数和 React 函数分开提供。
+它们通过替代入口点（如 `jotai/vanilla`）导出。
+
+#### Store API
+
+Jotai 暴露了 Store 接口，你可以直接操作原子的值。
+
+```js
+import { createStore } from 'jotai' // or from 'jotai/vanilla'
+
+const store = createStore()
+store.set(fooAtom, 'foo')
+
+console.log(store.get(fooAtom)) // prints "foo"
+
+const unsub = store.sub(fooAtom, () => {
+  console.log('fooAtom value in store is changed')
+})
+// call unsub() to unsubscribe.
+```
+
+你也可以创建自己的 React Context 来传递 store。
+
+#### 更灵活的原子 `write` 函数
+
+写入函数现在可以接受多个参数，并返回一个值。
+
+```js
+atom(
+  (get) => get(...),
+  (get, set, arg1, arg2, ...) => {
+    ...
+    return someValue
+  }
+)
+```
+
+### 破坏性变更
+
+#### 异步原子不再特殊
+
+异步原子现在只是值为 promise 的普通原子。
+原子的 getter 函数不再自动解析 promise。
+但 `useAtom` hook 仍会继续解析 promise。
+
+一些工具函数（如 `splitAtom`）只接受同步原子，不兼容异步原子。
+
+#### 可写原子类型变更（仅 TypeScript）
+
+```ts
+// Old
+WritableAtom<Value, Arg, Result extends void | Promise<void>>
+
+// New
+WritableAtom<Value, Args extends unknown[], Result>
+```
+
+一般来说，应避免直接使用 `WritableAtom` 类型。
+
+#### 部分函数被移除
+
+- Provider 的 `initialValues` prop 被移除，因为 `store` 更加灵活。
+- Provider 的 scope prop 被移除，因为你可以创建自己的 context。
+- `abortableAtom` 工具函数被移除，因为该功能已内置。
+- `waitForAll` 工具函数被移除，因为 `Promise.all` 就能实现。
+
+### 迁移指南
+
+#### 异步原子
+
+异步原子的读取函数中，`get` 函数不再自动解析 promise，因此你需要添加 `await` 或 `.then()`。
+
+简而言之，变更如下所示。
+（TypeScript 用户可以通过类型提示找到需要修改的地方。）
+
+##### 旧 API
+
+```js
+const asyncAtom = atom(async () => 'hello')
+const derivedAtom = atom((get) => get(asyncAtom).toUppercase())
+```
+
+##### 新 API
+
+```js
+const asyncAtom = atom(async () => 'hello')
+const derivedAtom = atom(async (get) => (await get(asyncAtom)).toUppercase())
+// or
+const derivedAtom = atom((get) => get(asyncAtom).then((x) => x.toUppercase()))
+```
+
+#### Provider 的 `initialValues` prop
+
+##### 旧 API
+
+```jsx
+const countAtom = atom(0)
+
+  // in component
+  <Provider initialValues={[[countAtom, 1]]}>
+    ...
+```
+
+##### 新 API
+
+```jsx
+const countAtom = atom(0)
+
+const HydrateAtoms = ({ initialValues, children }) => {
+  useHydrateAtoms(initialValues)
+  return children
+}
+
+  // in component
+  <Provider>
+    <HydrateAtoms initialValues={[[countAtom, 1]]}>
+      ...
+```
+
+#### Provider 的 `scope` prop
+
+##### 旧 API
+
+```jsx
+const myScope = Symbol()
+
+  // Parent component
+  <Provider scope={myScope}>
+    ...
+  </Provider>
+
+  // Child component
+  useAtom(..., myScope)
+```
+
+##### 新 API
+
+```jsx
+const MyContext = createContext()
+const store = createStore()
+
+  // Parent component
+  <MyContext.Provider value={store}>
+    ...
+  </MyContext.Provider>
+
+  // Child Component
+  const store = useContext(MyContext)
+  useAtom(..., { store })
+```
+
+#### `abortableAtom` 工具函数
+
+你不再需要之前的 `abortableAtom` 工具函数，因为该功能现已被普通的 `atom` 支持。
+
+##### 旧 API
+
+```js
+const asyncAtom = abortableAtom(async (get, { signal }) => {
+ ...
+}
+```
+
+##### 新 API
+
+```js
+const asyncAtom = atom(async (get, { signal }) => {
+  ...
+}
+```
+
+#### `waitForAll` 工具函数
+
+你不再需要之前的 `waitForAll` 工具函数，因为我们可以使用原生的 Promise API。
+
+##### 旧 API
+
+```js
+const allAtom = waitForAll([fooAtom, barAtom])
+```
+
+##### 新 API
+
+```js
+const allAtom = atom((get) => Promise.all([get(fooAtom), get(barAtom)]))
+```
+
+注意，在渲染函数中创建原子可能导致[无限循环](../core/atom.mdx#note-about-creating-an-atom-in-render-function)。
+
+#### `splitAtom` 工具函数（以及其他部分工具函数）与异步原子
+
+`splitAtom` 工具函数仅接受同步原子。
+你需要在传递之前先解包异步原子。
+
+这也适用于其他一些工具函数，如 `jotai-tanstack-query` 中的 `atomsWithQuery`。
+
+##### 旧 API
+
+```js
+const splittedAtom = splitAtom(asyncArrayAtom)
+```
+
+##### 新 API
+
+```js
+const splittedAtom = splitAtom(unwrap(asyncArrayAtom, () => []))
+```
+
+截至撰写时，`unwrap` 是不稳定的且未被文档化。
+你可以改用 `loadable`，它对加载状态提供了更多控制。
+如果你需要使用 `<Suspense>`，"原子中的原子"模式会有所帮助。
+
+更多信息请参考以下讨论：
+
+- https://github.com/pmndrs/jotai/discussions/1615
+- https://github.com/jotaijs/jotai-tanstack-query/issues/21
+- https://github.com/pmndrs/jotai/discussions/1751
+
+### 其他变更
+
+#### 工具函数
+
+- `atomWithStorage` 工具函数的 `delayInit` 已被移除并成为默认行为。此外，它将始终在首次渲染时返回 `initialValue`，在后续渲染时返回存储的值（如果有）。新行为与 v1 不同。更多信息请参见 https://github.com/pmndrs/jotai/discussions/1737。
+- `useHydrateAtoms` 仅接受可写原子。
+
+#### Import 语句
+
+v2 API 还通过替代入口点为库作者和非 React 用户提供。
+
+- `jotai/vanilla`
+- `jotai/vanilla/utils`
+- `jotai/react`
+- `jotai/react/utils`
+
+```js
+// Available since v1.11.0
+import { atom } from 'jotai/vanilla'
+import { useAtom } from 'jotai/react'
+
+// Available since v2.0.0
+import { atom } from 'jotai' // is same as 'jotai/vanilla'
+import { useAtom } from 'jotai' // is same as 'jotai/react'
+```
+
+注意：如果你没有使用 ESM，建议优先使用 `jotai/vanilla` 等而非 `jotai`，以获得更好的 tree shaking 效果。

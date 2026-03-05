@@ -1,0 +1,125 @@
+---
+title: Cache
+description: This doc describes cache extension.
+nav: 4.07
+keywords: cache
+---
+
+{/*
+translation-source-path: extensions/cache.mdx
+translation-source-ref: v2.18.0
+translation-source-hash: 38c717dd54080743dab49609f68637e4d99f2d73feafe43e3e90f71189b945e8
+translation-status: translated
+*/}
+
+
+Jotai 提供了优化重新渲染的原始函数。
+它被设计为只保存"当前"的原子值，不会缓存旧值。
+
+缓存有时很有用。例如，当一个异步原子触发网络请求时，我们可能想缓存响应结果。
+
+[jotai-cache](https://github.com/jotai-labs/jotai-cache) 是一个帮助处理此类场景的第三方库。
+
+### 安装
+
+```
+npm install jotai-cache
+```
+
+## atomWithCache
+
+```js
+atomWithCache(read, options): Atom
+```
+
+`atomWithCache` 创建一个带缓存的新的只读原子。
+
+### 参数
+
+**read**：定义只读原子的读取函数。
+
+**options**（可选）：用于自定义原子行为的选项对象。
+
+### 选项
+
+**size**（可选）：缓存项的最大数量。
+
+**shouldRemove**（可选）：用于检查是否应移除缓存项的函数。
+
+**areEqual**（可选）：用于比较原子值的函数。
+
+### 示例
+
+```jsx
+import { atom, useAtom } from 'jotai'
+import { atomWithCache } from 'jotai-cache'
+
+const idAtom = atom(1)
+
+const normalAtom = atom(async (get) => {
+  const id = get(idAtom)
+  const response = await fetch(`https://reqres.in/api/users/${id}?delay=1`)
+  return response.json()
+})
+
+const cachedAtom = atomWithCache(async (get) => {
+  const id = get(idAtom)
+  const response = await fetch(`https://reqres.in/api/users/${id}?delay=1`)
+  return response.json()
+})
+
+const NormalUser = () => {
+  const [{ data }] = useAtom(normalAtom)
+  return (
+    <div>
+      <h1>User (normal atom)</h1>
+      <ul>
+        <li>ID: {data.id}</li>
+        <li>First name: {data.first_name}</li>
+        <li>Last name: {data.last_name}</li>
+      </ul>
+    </div>
+  )
+}
+
+const CachedUser = () => {
+  const [{ data }] = useAtom(cachedAtom)
+  return (
+    <div>
+      <h1>User (cached atom)</h1>
+      <ul>
+        <li>ID: {data.id}</li>
+        <li>First name: {data.first_name}</li>
+        <li>Last name: {data.last_name}</li>
+      </ul>
+    </div>
+  )
+}
+
+const App = () => {
+  const [id, setId] = useAtom(idAtom)
+  return (
+    <div>
+      ID: {id}{' '}
+      <button type="button" onClick={() => setId((c) => c - 1)}>
+        Prev
+      </button>{' '}
+      <button type="button" onClick={() => setId((c) => c + 1)}>
+        Next
+      </button>
+      <hr />
+      <Suspense fallback="Loading...">
+        <CachedUser />
+      </Suspense>
+      <hr />
+      <Suspense fallback="Loading...">
+        <NormalUser />
+      </Suspense>
+    </div>
+  )
+}
+```
+
+### Stackblitz
+
+[Open in StackBlitz](https://stackblitz.com/edit/vitejs-vite-p86ajq?file=src%2FApp.tsx)

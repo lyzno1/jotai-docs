@@ -1,0 +1,60 @@
+---
+title: Zustand
+description: This doc describes Zustand extension.
+nav: 4.98
+keywords: zustand
+published: false
+---
+
+{/*
+translation-source-path: extensions/zustand.mdx
+translation-source-ref: v2.18.0
+translation-source-hash: 10c9a213447500c5d1906c6e935d5094334ab6656bc97581756f9fd560ff0e45
+translation-status: translated
+*/}
+
+
+Jotai 的状态存储在 React 中，但有时我们需要与 React 之外的世界进行交互。
+
+Zustand 提供了一个 Store 接口，可用于存储一些值并与 Jotai 中的原子同步。
+
+此扩展仅使用 Zustand 的 vanilla API。
+
+### 安装
+
+你需要安装 `zustand` 和 `jotai-zustand` 来使用此功能。
+
+```
+npm install zustand jotai-zustand
+```
+
+## atomWithStore
+
+`atomWithStore` 使用 Zustand Store 创建一个新的原子。它是双向绑定的，你可以从两端修改值。
+
+```jsx
+import { useAtom } from 'jotai'
+import { atomWithStore } from 'jotai-zustand'
+import create from 'zustand/vanilla'
+
+const store = create(() => ({ count: 0 }))
+const stateAtom = atomWithStore(store)
+const Counter = () => {
+  const [state, setState] = useAtom(stateAtom)
+
+  return (
+    <>
+      count: {state.count}
+      <button
+        onClick={() => setState((prev) => ({ ...prev, count: prev.count + 1 }))}
+      >
+        button
+      </button>
+    </>
+  )
+}
+```
+
+### 示例
+
+[在 StackBlitz 中打开](https://stackblitz.com/edit/vitejs-vite-kfzyun?file=src%2FApp.tsx)

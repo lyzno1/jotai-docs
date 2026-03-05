@@ -1,0 +1,142 @@
+---
+title: SWC
+description: This doc describes SWC plugins for Jotai.
+nav: 6.01
+keywords: swc,next,nextjs,fast,refresh
+---
+
+{/*
+translation-source-path: tools/swc.mdx
+translation-source-ref: v2.18.0
+translation-source-hash: b96a7db718b4cc37f1894f6ad94d6fbcda8afeed69027dd45e557e635c709106
+translation-status: translated
+*/}
+
+
+⚠️ 注意：这些插件是实验性的。欢迎在 [Github 仓库](https://github.com/pmndrs/swc-jotai)中提供反馈。请在该独立仓库中提交 issue，而非 `jotai` 仓库。
+
+## @swc-jotai/react-refresh
+
+此插件为 Jotai 原子添加了 React Refresh 支持。确保在使用 React Refresh 开发时不会丢失状态。
+
+### 用法
+
+安装：
+
+```sh
+npm install --save-dev @swc-jotai/react-refresh
+```
+
+你可以在 `.swcrc` 中添加该插件：
+
+```json
+{
+  "jsc": {
+    "experimental": {
+      "plugins": [["@swc-jotai/react-refresh", {}]]
+    }
+  }
+}
+```
+
+你也可以通过 Next.js 的[实验性 SWC 插件功能](https://nextjs.org/docs/advanced-features/compiler#swc-plugins-experimental)使用该插件。
+
+```js
+module.exports = {
+  experimental: {
+    swcPlugins: [['@swc-jotai/react-refresh', {}]],
+  },
+}
+```
+
+示例见下方。
+
+## @swc-jotai/debug-label
+
+Jotai 基于对象引用而非键（与 Recoil 不同）。这意味着原子没有标识符。为了识别原子，可以为原子添加 `debugLabel`，该标签会在 React 开发者工具中显示。
+
+然而，手动为每个原子添加 `debugLabel` 很快会变得繁琐。
+
+这个 `SWC` 插件会根据变量名自动为每个原子添加 `debugLabel`。
+
+该插件会将以下代码：
+
+```js
+export const countAtom = atom(0)
+```
+
+转换为：
+
+```js
+export const countAtom = atom(0)
+countAtom.debugLabel = 'countAtom'
+```
+
+默认导出也会被处理，基于文件名：
+
+```js
+// countAtom.ts
+export default atom(0)
+```
+
+转换为：
+
+```js
+// countAtom.ts
+const countAtom = atom(0)
+countAtom.debugLabel = 'countAtom'
+export default countAtom
+```
+
+### 用法
+
+安装：
+
+```sh
+npm install --save-dev @swc-jotai/debug-label
+```
+
+你可以在 `.swcrc` 中添加该插件：
+
+```json
+{
+  "jsc": {
+    "experimental": {
+      "plugins": [["@swc-jotai/debug-label", {}]]
+    }
+  }
+}
+```
+
+或者通过 Next.js 的[实验性 SWC 插件功能](https://nextjs.org/docs/advanced-features/compiler#swc-plugins-experimental)使用该插件。
+
+```js
+module.exports = {
+  experimental: {
+    swcPlugins: [['@swc-jotai/debug-label', {}]],
+  },
+}
+```
+
+示例见下方。
+
+### 自定义原子函数名
+
+你可以为自定义原子启用这些插件。按如下方式将它们提供给插件：
+
+```js
+module.exports = {
+  experimental: {
+    swcPlugins: [
+      ['@swc-jotai/debug-label', { atomNames: ['customAtom'] }],
+      ['@swc-jotai/react-refresh', { atomNames: ['customAtom'] }],
+    ],
+  },
+}
+```
+
+### 示例
+
+### Next.js
+
+[在 StackBlitz 中打开](https://stackblitz.com/edit/stackblitz-starters-ha5txx?file=app%2Fpage.tsx)

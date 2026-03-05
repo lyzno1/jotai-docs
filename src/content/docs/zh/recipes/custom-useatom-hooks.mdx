@@ -1,0 +1,90 @@
+---
+title: Custom useAtom hooks
+nav: 9.02
+keywords: custom,hook
+---
+
+{/*
+translation-source-path: recipes/custom-useatom-hooks.mdx
+translation-source-ref: v2.18.0
+translation-source-hash: 48fc09f81dd46a2ee9895ef2ccd4fe72a4cb713bc8a973bd4c7d2dbc6dd204a0
+translation-status: translated
+*/}
+
+
+本页展示了创建不同工具函数的方法。工具函数可以节省编码时间，同时保留基础原子以供其他用途。
+
+### utils
+
+#### useSelectAtom
+
+```js
+import { useAtomValue } from 'jotai'
+import { selectAtom } from 'jotai/utils'
+
+export function useSelectAtom(anAtom, selector) {
+  const selectorAtom = selectAtom(
+    anAtom,
+    selector,
+    // 你也可以自定义 `equalityFn` 来决定何时触发重新渲染
+    // 详见 selectAtom 的函数签名。
+  )
+  return useAtomValue(selectorAtom)
+}
+
+// 使用方式
+function useN(n) {
+  const selector = useCallback((v) => v[n], [n])
+  return useSelectAtom(arrayAtom, selector)
+}
+```
+
+请注意，`keyFn` 必须是稳定的引用，要么在渲染外部定义，要么用 `useCallback` 包裹。
+
+#### useFreezeAtom
+
+```js
+import { useAtom } from 'jotai'
+import { freezeAtom } from 'jotai/utils'
+
+export function useFreezeAtom(anAtom) {
+  return useAtom(freezeAtom(anAtom))
+}
+```
+
+#### useSplitAtom
+
+```js
+import { useAtom } from 'jotai'
+import { splitAtom } from 'jotai/utils'
+
+export function useSplitAtom(anAtom) {
+  return useAtom(splitAtom(anAtom))
+}
+```
+
+### extensions
+
+#### useFocusAtom
+
+```js
+import { useAtom } from 'jotai'
+import { focusAtom } from 'jotai-optics'
+
+/* 如果在此处创建原子，请使用 `useMemo(() => atom(initValue), [initValue])` 代替。 */
+export function useFocusAtom(anAtom, keyFn) {
+    return useAtom(focusAtom(anAtom, keyFn))
+}
+
+// 使用方式
+useFocusAtom(anAtom) {
+    useMemo(() => atom(initValue), [initValue]),
+    useCallback((optic) => optic.prop('key'), [])
+}
+```
+
+#### Stackblitz
+
+[在 StackBlitz 中打开](https://stackblitz.com/edit/vitejs-vite-ge1mah?file=src%2FApp.tsx)
+
+请注意，`keyFn` 必须是稳定的引用，要么在渲染外部定义，要么用 `useCallback` 包裹。

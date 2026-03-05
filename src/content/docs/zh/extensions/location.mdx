@@ -1,0 +1,176 @@
+---
+title: Location
+description: This doc describes window.location extension.
+nav: 4.06
+keywords: location,hash
+---
+
+{/*
+translation-source-path: extensions/location.mdx
+translation-source-ref: v2.18.0
+translation-source-hash: c9e25a679e09114b17a76502baae2c071b4ff06141c9270d5101930000e02a83
+translation-status: translated
+*/}
+
+
+为了处理 `window.location`，我们提供了一些创建原子的函数。
+
+### 安装
+
+你需要安装 `jotai-location` 才能使用此功能。
+
+```
+npm install jotai-location
+```
+
+## atomWithLocation
+
+```js
+atomWithLocation(options): PrimitiveAtom
+```
+
+`atomWithLocation` 创建一个与 `window.location` 链接的新原子。
+
+通常，每个应用只应实例化一次 `atomWithLocation`。因为对一个实例所做的更改可能不会反映到其他实例。
+由于该原子旨在与 `window.location` 对象同步，使用多个实例可能导致不可预测的行为。
+
+### 参数
+
+**options**（可选）：用于自定义原子行为的选项对象。
+
+### 选项
+
+**preloaded**（可选）：预加载的 location 值，用于避免在初始化时获取 location。
+
+**replace**（可选）：一个布尔值，指示是否使用 `replaceState` 代替 `pushState`。
+
+**getLocation**（可选）：自定义的获取 location 值的函数。
+
+**applyLocation**（可选）：自定义的设置 location 值的函数。
+
+**subscribe**（可选）：自定义的订阅 location 变化的函数。
+
+### 示例
+
+```jsx
+import { useAtom } from 'jotai'
+import { atomWithLocation } from 'jotai-location'
+
+const locationAtom = atomWithLocation()
+
+const App = () => {
+  const [loc, setLoc] = useAtom(locationAtom)
+  return (
+    <ul>
+      <li>
+        <button
+          style={{
+            fontWeight: loc.pathname === '/' ? 'bold' : 'normal',
+          }}
+          onClick={() => setLoc((prev) => ({ ...prev, pathname: '/' }))}
+        >
+          Home
+        </button>
+      </li>
+      <li>
+        <button
+          style={{
+            fontWeight:
+              loc.pathname === '/foo' && !loc.searchParams?.get('bar')
+                ? 'bold'
+                : 'normal',
+          }}
+          onClick={() =>
+            setLoc((prev) => ({
+              ...prev,
+              pathname: '/foo',
+              searchParams: new URLSearchParams(),
+            }))
+          }
+        >
+          Foo
+        </button>
+      </li>
+      <li>
+        <button
+          style={{
+            fontWeight:
+              loc.pathname === '/foo' && loc.searchParams?.get('bar') === '1'
+                ? 'bold'
+                : 'normal',
+          }}
+          onClick={() =>
+            setLoc((prev) => ({
+              ...prev,
+              pathname: '/foo',
+              searchParams: new URLSearchParams([['bar', '1']]),
+            }))
+          }
+        >
+          Foo?bar=1
+        </button>
+      </li>
+    </ul>
+  )
+}
+```
+
+### Stackblitz
+
+[Open in StackBlitz](https://stackblitz.com/edit/vitejs-vite-9v72fq?file=src%2FApp.tsx)
+
+## atomWithHash
+
+```js
+atomWithHash(key, initialValue, options): PrimitiveAtom
+```
+
+创建一个与 URL hash 关联的新原子。
+hash 必须采用 URLSearchParams 格式。
+这是一个双向绑定：更改原子值会更改 hash，更改 hash 也会更改原子值。
+此函数仅适用于 DOM 环境。
+
+### 参数
+
+**key**（必需）：一个唯一字符串，用于在与 localStorage、sessionStorage 或 AsyncStorage 同步状态时作为键。
+
+**initialValue**（必需）：原子的初始值。
+
+**options**（可选）：用于自定义原子行为的选项对象。
+
+### 选项
+
+**serialize**（可选）：自定义的将原子值序列化为 hash 的函数。默认为 `JSON.stringify`。
+
+**deserialize**（可选）：自定义的将 hash 反序列化为原子值的函数。默认为 `JSON.parse`。
+
+**subscribe**（可选）：自定义的 hash 变化订阅函数。
+
+**setHash**（可选）：`replaceState` 或一个自定义函数，描述浏览器端如何更新 hash。默认通过 `window.location.hash = searchParams` 向历史记录推送新条目（[jotai-location#4](https://github.com/jotaijs/jotai-location/pull/4)）。
+
+### 示例
+
+```jsx
+import { useAtom } from 'jotai'
+import { atomWithHash } from 'jotai-location'
+
+const countAtom = atomWithHash('count', 1)
+
+const Counter = () => {
+  const [count, setCount] = useAtom(countAtom)
+  return (
+    <div>
+      <div>count: {count}</div>
+      <button onClick={() => setCount((c) => c + 1)}>+1</button>
+    </div>
+  )
+}
+```
+
+### Stackblitz
+
+[Open in StackBlitz](https://stackblitz.com/edit/vitejs-vite-zngpjt?file=src%2FApp.tsx)
+
+### 删除项
+
+请参阅 [atomWithStorage](../utilities/storage.mdx) 了解删除项的用法。

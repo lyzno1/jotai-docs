@@ -1,0 +1,38 @@
+---
+title: Concepts
+nav: 7.01
+---
+
+{/*
+translation-source-path: basics/concepts.mdx
+translation-source-ref: v2.18.0
+translation-source-hash: 423453f8b6a8ae8756e85d528661cfbb677b455a9325f9a531b92a141e5c5886
+translation-status: translated
+*/}
+
+
+Jotai 是一个让你回归 React 开发基础、保持一切简洁的库。
+
+### 从零开始
+
+在将 Jotai 与我们以前了解的东西进行比较之前，让我们先深入一些非常简单的内容。
+
+React 的世界很像我们的世界——它是由大量小实体组成的集合，我们称之为组件，它们各自拥有自己的状态。将组件组织在一起进行交互，就构成了你的应用。
+
+Jotai 的世界也有它的小实体——原子，它们同样拥有自己的状态。组合原子将构建出你的应用状态！
+
+Jotai 把任何东西都视为原子，所以你可能会说："嗯，我需要对象和数组，还要过滤和排序它们。"
+而这正是它的精妙之处——Jotai 让你优雅地从更基础的原子派生出新的原子。
+
+例如，假设我有一个包含两个选项卡的页面：在线好友和离线好友。
+我只需从一个更基础的公共原子派生出两个原子即可。
+
+```js
+const dumbAtom = atom([{ name: 'Friend 1', online: false }])
+const onlineAtom = atom((get) => get(dumbAtom).filter((item) => item.online))
+const offlineAtom = atom((get) => get(dumbAtom).filter((item) => !item.online))
+```
+
+你可以不断地增加复杂度。
+
+Jotai 另一个强大的特性是内置了对异步原子的 Suspense 支持。这是一个相对较新的功能，还需要更多实验，但它无疑是我们未来构建 React 应用的方向。[查看文档](https://react.dev/blog/2022/03/29/react-v18#new-suspense-features) 了解更多信息。

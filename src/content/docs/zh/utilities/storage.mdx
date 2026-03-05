@@ -1,0 +1,284 @@
+---
+title: Storage
+nav: 3.01
+keywords: storage,localstorage,sessionstorage,asyncstorage,persist,persistence
+---
+
+{/*
+translation-source-path: utilities/storage.mdx
+translation-source-ref: v2.18.0
+translation-source-hash: d4ce79aa9b5c1cc3fefae805403616b277da67b5a0ea51c4fa9e2059fc9e01c6
+translation-status: translated
+*/}
+
+
+## atomWithStorage
+
+参考：https://github.com/pmndrs/jotai/pull/394
+
+```jsx
+import { useAtom } from 'jotai'
+import { atomWithStorage } from 'jotai/utils'
+
+const darkModeAtom = atomWithStorage('darkMode', false)
+
+const Page = () => {
+  const [darkMode, setDarkMode] = useAtom(darkModeAtom)
+
+  return (
+    <>
+      <h1>Welcome to {darkMode ? 'dark' : 'light'} mode!</h1>
+      <button onClick={() => setDarkMode(!darkMode)}>toggle theme</button>
+    </>
+  )
+}
+```
+
+`atomWithStorage` 函数创建一个值持久化在 `localStorage` 或 `sessionStorage`（React）或 `AsyncStorage`（React Native）中的原子。
+
+### 参数
+
+**key**（必填）：与 localStorage、sessionStorage 或 AsyncStorage 同步状态时使用的唯一字符串键
+
+**initialValue**（必填）：原子的初始值
+
+**storage**（可选）：包含以下方法的对象：
+
+- **getItem(key, initialValue)**（必填）：从存储中读取数据，或回退到 `initialValue`
+- **setItem(key, value)**（必填）：将数据保存到存储中
+- **removeItem(key)**（必填）：从存储中删除数据
+- **subscribe(key, callback, initialValue)**（可选）：订阅外部存储更新的方法
+
+**options**（可选）：包含以下属性的对象：
+
+- **getOnInit**（可选，默认为 **false**）：布尔值，表示是否在初始化时从存储中获取数据。注意在 SPA 中，如果 `getOnInit` 未设置或为 `false`，你在初始化时总是会得到初始值而非存储的值。如果需要存储的值，请将 `getOnInit` 设为 `true`。
+
+如果未指定，默认的存储实现使用 `localStorage` 进行存储/读取，使用 `JSON.stringify()`/`JSON.parse()` 进行序列化/反序列化，并订阅 `storage` 事件以实现跨标签页同步。
+
+[在 StackBlitz 中打开](https://stackblitz.com/edit/vitejs-vite-xvlgfxrk?file=src%2FApp.tsx)
+
+### `createJSONStorage` 工具函数
+
+要创建使用 `JSON.stringify()`/`JSON.parse()` 的自定义存储实现作为 `storage` 选项，可以使用 `createJSONStorage` 工具函数。
+
+用法：
+
+```js
+const storage = createJSONStorage(
+  // getStringStorage
+  () => localStorage, // 或 sessionStorage、asyncStorage 等
+  // options（可选）
+  {
+    reviver, // JSON.parse 的可选 reviver 参数
+    replacer, // JSON.stringify 的可选 replacer 参数
+  },
+)
+```
+
+注意：`JSON.parse` 不是类型安全的。如果它不能接受任意类型，生产应用中需要进行某种验证。
+
+### 服务端渲染
+
+任何依赖存储原子值的 JSX 标记（例如 `className` 或 `style` 属性）在服务端渲染时将使用 `initialValue`（因为服务端无法访问 `localStorage` 和 `sessionStorage`）。
+
+这意味着如果用户的 `storedValue` 与 `initialValue` 不同，最初发送给用户浏览器的 HTML 与 React 在水合过程中期望的内容之间会产生不匹配。
+
+建议的解决方法是仅在客户端渲染依赖 `storedValue` 的内容，方法是将其包裹在一个[自定义 `<ClientOnly>` 包装组件](https://www.joshwcomeau.com/react/the-perils-of-rehydration/#abstractions)中，该组件仅在水合完成后才渲染。技术上还有其他解决方案，但会导致 `initialValue` 到 `storedValue` 的短暂"闪烁"，这会造成不好的用户体验，因此推荐上述方案。
+
+### 从存储中删除数据
+
+如果你想从存储中删除某个数据项，
+使用 `atomWithStorage` 创建的原子在写入时接受 `RESET` symbol。
+
+用法示例如下：
+
+```jsx
+import { useAtom } from 'jotai'
+import { atomWithStorage, RESET } from 'jotai/utils'
+
+const textAtom = atomWithStorage('text', 'hello')
+
+const TextBox = () => {
+  const [text, setText] = useAtom(textAtom)
+
+  return (
+    <>
+      <input value={text} onChange={(e) => setText(e.target.value)} />
+      <button onClick={() => setText(RESET)}>Reset (to 'hello')</button>
+    </>
+  )
+}
+```
+
+如果需要，你还可以基于之前的值进行条件重置。
+
+当你希望在之前的值满足某个条件时清除 localStorage 中的键，这尤其有用。
+
+下面的示例展示了这种用法：当之前的值为 `true` 时清除 `visible` 键。
+
+```jsx
+import { useAtom } from 'jotai'
+import { atomWithStorage, RESET } from 'jotai/utils'
+
+const isVisibleAtom = atomWithStorage('visible', false)
+
+const TextBox = () => {
+  const [isVisible, setIsVisible] = useAtom(isVisibleAtom)
+
+  return (
+    <>
+      { isVisible && <h1>Header is visible!</h1> }
+      <button onClick={() => setIsVisible((prev) => prev ? RESET : true))}>Toggle visible</button>
+    </>
+  )
+}
+```
+
+### React-Native 实现
+
+你可以使用任何实现了 `getItem`、`setItem` 和 `removeItem` 的库。
+假设你使用社区提供的标准 AsyncStorage。
+
+```js
+import { atomWithStorage, createJSONStorage } from 'jotai/utils'
+import AsyncStorage from '@react-native-async-storage/async-storage'
+
+const storage = createJSONStorage(() => AsyncStorage)
+const content = {} // 任何可 JSON 序列化的内容
+const storedAtom = atomWithStorage('stored-key', content, storage)
+```
+
+**注意**：如果你希望原子在初始化时立即返回存储的值而非默认值，请将 `getOnInit` 设为 `true`。
+
+**getOnInit true 与 false 对比示例**
+
+<details>
+
+```jsx
+// 假设 localStorage 中已有：{ "symbol": "BTC_USDC" }
+
+// 不使用 getOnInit（默认行为）
+const symbolAtom = atomWithStorage('symbol', 'SOL_USDC')
+
+function App() {
+  const symbol = useAtomValue(symbolAtom)
+
+  useEffect(() => {
+    console.log('symbol', symbol)
+  }, [symbol])
+
+  return <div>{symbol}</div>
+}
+
+// 不使用 getOnInit 时的控制台输出：
+// LOG "symbol" SOL_USDC  （初始渲染）
+// LOG "symbol" BTC_USDC  （存储加载后）
+
+// 将 getOnInit 设为 true
+const symbolAtom = atomWithStorage('symbol', 'SOL_USDC', undefined, {
+  getOnInit: true,
+})
+
+function App() {
+  const symbol = useAtomValue(symbolAtom)
+
+  useEffect(() => {
+    console.log('symbol', symbol)
+  }, [symbol])
+
+  return <div>{symbol}</div>
+}
+
+// 使用 getOnInit 时的控制台输出：
+// LOG "symbol" BTC_USDC  （立即获取存储的值）
+```
+
+</details>
+
+#### AsyncStorage 注意事项（自 v2.2.0 起）
+
+使用 AsyncStorage（或任何异步存储）时，原子的值会变成异步的。
+当基于当前值更新原子时，你需要 `await` 它。
+
+```js
+const countAtom = atomWithStorage('count-key', 0, anyAsyncStorage)
+const Component = () => {
+  const [count, setCount] = useAtom(countAtom)
+  const increment = () => {
+    setCount(async (promiseOrValue) => (await promiseOrValue) + 1)
+  }
+  // ...
+}
+```
+
+### 验证存储的值
+
+要为你的存储原子添加运行时验证，你需要创建自定义的存储实现。
+
+以下是一个使用 Zod 验证存储在 `localStorage` 中的值并支持跨标签页同步的示例。
+
+```js
+import { atomWithStorage } from 'jotai/utils'
+import { z } from 'zod'
+
+const myNumberSchema = z.number().int().nonnegative()
+
+const storedNumberAtom = atomWithStorage('my-number', 0, {
+  getItem(key, initialValue) {
+    const storedValue = localStorage.getItem(key)
+    try {
+      return myNumberSchema.parse(JSON.parse(storedValue ?? ''))
+    } catch {
+      return initialValue
+    }
+  },
+  setItem(key, value) {
+    localStorage.setItem(key, JSON.stringify(value))
+  },
+  removeItem(key) {
+    localStorage.removeItem(key)
+  },
+  subscribe(key, callback, initialValue) {
+    if (
+      typeof window === 'undefined' ||
+      typeof window.addEventListener === 'undefined'
+    ) {
+      return
+    }
+    const handler = (e) => {
+      if (e.storageArea === localStorage && e.key === key) {
+        let newValue
+        try {
+          newValue = myNumberSchema.parse(JSON.parse(e.newValue ?? ''))
+        } catch {
+          newValue = initialValue
+        }
+        callback(newValue)
+      }
+    }
+    window.addEventListener('storage', handler)
+    return () => window.removeEventListener('storage', handler)
+  },
+})
+```
+
+我们还提供了一个新的工具函数 `unstable_withStorageValidator` 来简化某些场景。
+上述示例可以简化为：
+
+```js
+import {
+  atomWithStorage,
+  createJSONStorage,
+  unstable_withStorageValidator as withStorageValidator,
+} from 'jotai/utils'
+import { z } from 'zod'
+
+const myNumberSchema = z.number().int().nonnegative()
+const isMyNumber = (v) => myNumberSchema.safeParse(v).success
+
+const storedNumberAtom = atomWithStorage(
+  'my-number',
+  0,
+  withStorageValidator(isMyNumber)(createJSONStorage()),
+)
+```

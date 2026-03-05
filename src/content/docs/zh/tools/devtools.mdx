@@ -1,0 +1,401 @@
+---
+title: Devtools
+description: This doc describes Devtools for Jotai.
+nav: 6.03
+keywords: devtools,debug,snapshot
+---
+
+{/*
+translation-source-path: tools/devtools.mdx
+translation-source-ref: v2.18.0
+translation-source-hash: 0625b5c09bf66955e3bddb1db69eef6ea4e06c41325411783c193406779cc1b5
+translation-status: translated
+*/}
+
+
+### 安装
+
+在你的项目中安装 `jotai-devtools`。
+
+```sh
+npm install jotai-devtools
+```
+
+### 注意事项
+
+- `<DevTools/>` 针对生产构建做了 tree-shaking 优化，**仅在非生产环境中生效**
+- Hooks 仅用于开发环境，设计上只在非生产环境中工作
+- 欢迎反馈，请在 [Jotai DevTools GitHub 仓库](https://github.com/jotaijs/jotai-devtools/discussions)中提出问题或建议
+
+### 快速链接
+
+- [UI Devtools](#ui-devtools)
+- Hooks
+  - [useAtomsDebugValue](#useatomsdebugvalue)
+  - [useAtomDevtools](#useatomdevtools)
+  - [useAtomsDevtools](#useatomsdevtools)
+  - [useAtomsSnapshot](#useatomssnapshot)
+  - [useGotoAtomsSnapshot](#usegotoatomssnapshot)
+- 迁移指南
+  - [从 `@emotion/react` 迁移](https://github.com/jotaijs/jotai-devtools?tab=readme-ov-file#migrate-%C6%92rom-emotionreact-to-native-css)
+
+### UI DevTools
+
+使用基于 UI 的 Jotai DevTool 增强你的开发体验。
+
+#### Babel 插件配置 - (_可选但强烈推荐_)
+
+使用 [`jotai-babel`](https://github.com/jotaijs/jotai-babel) 插件以获得最佳调试体验。完整指南请参阅 [babel](../tools/babel) 页面和/或 [swc](../tools/swc) 页面。
+
+示例：
+
+```ts
+{
+  "presets": [
+    // 该 preset 包含两个插件：
+    // - jotai-babel/plugin-react-refresh 用于启用原子的热更新
+    // - jotai-babel/plugin-debug-label 用于自动为原子添加调试标签
+    'jotai-babel/preset'
+  ]
+}
+```
+
+Vite + React 项目示例：
+
+```ts
+// vite.config.ts
+
+export default defineConfig({
+  plugins: [
+    react({
+      babel: {
+        presets: ['jotai-babel/preset'],
+      },
+    }),
+  ],
+})
+```
+
+### Next JS 配置
+
+_如果你没有使用 [Next.js](https://nextjs.org)，可以跳过此部分。_
+
+启用 `transpilePackages` 以确保 UI CSS 和组件被正确转译。
+
+```ts
+// next.config.ts
+const nextConfig = {
+  // Learn more here - https://nextjs.org/docs/advanced-features/compiler#module-transpilation
+  // Required for UI css to be transpiled correctly 👇
+  transpilePackages: ['jotai-devtools'],
+}
+module.exports = nextConfig
+```
+
+### 可用属性
+
+```ts
+type DevToolsProps = {
+  // 默认为 false
+  isInitialOpen?: boolean
+  // 传入自定义 store
+  store?: Store
+  // 默认为 light
+  theme?: 'dark' | 'light'
+  // 设置触发按钮的位置
+  // 默认为 `bottom-left`
+  position?: 'top-right' | 'top-left' | 'bottom-right' | 'bottom-left'
+  // 自定义 nonce，用于通过 CSP 允许 jotai-devtools 特定的内联样式
+  nonce?: string
+  options?: {
+    // 私有原子在 `atomWithStorage` 或 `atomWithLocation` 等原子创建器内部使用，
+    // 用于管理内部状态。
+    // 默认为 `false`
+    shouldShowPrivateAtoms?: boolean
+    // 在 Atom Viewer 标签、Timeline 标签等页面初始渲染时展开 JSON 树视图。
+    // 默认为 `false`
+    shouldExpandJsonTreeViewInitially?: boolean
+    // 时间旅行回放每步之间的间隔（毫秒）。
+    // 默认为 `750ms`
+    timeTravelPlaybackInterval?: number
+    // 历史记录中保留的最大快照数量。
+    // 数值越大，消耗的内存越多。
+    // 默认为 `Infinity`。建议值：`~30`
+    snapshotHistoryLimit?: number
+  }
+}
+```
+
+### 用法
+
+#### 无 Provider
+
+```tsx
+import { DevTools } from 'jotai-devtools'
+import 'jotai-devtools/styles.css'
+
+const App = () => {
+  return (
+    <>
+      <DevTools />
+      {/* your app */}
+    </>
+  )
+}
+```
+
+#### 使用 Provider
+
+```tsx
+import { createStore } from 'jotai'
+import { DevTools } from 'jotai-devtools'
+import 'jotai-devtools/styles.css'
+
+const customStore = createStore()
+
+const App = () => {
+  return (
+    <Provider store={customStore}>
+      <DevTools store={customStore} />
+      {/* your app */}
+    </Provider>
+  )
+}
+```
+
+### 预览
+
+[在 StackBlitz 中打开](https://stackblitz.com/edit/vitejs-vite-hzldhk?file=src%2FApp.tsx)
+
+## useAtomsDebugValue
+
+`useAtomsDebugValue` 是一个 React hook，可在 React Devtools 中显示所有原子的值。
+
+```ts
+function useAtomsDebugValue(options?: {
+  store?: Store
+  enabled?: boolean
+}): void
+```
+
+它内部使用了 `useDebugValue`，仅在开发模式下有效。
+它会捕获从该 hook 所在位置可访问的所有原子。
+
+### 示例
+
+```jsx
+import { useAtomsDebugValue } from 'jotai-devtools/utils'
+
+const textAtom = atom('hello')
+textAtom.debugLabel = 'textAtom'
+
+const lenAtom = atom((get) => get(textAtom).length)
+lenAtom.debugLabel = 'lenAtom'
+
+const TextBox = () => {
+  const [text, setText] = useAtom(textAtom)
+  const [len] = useAtom(lenAtom)
+  return (
+    <span>
+      <input value={text} onChange={(e) => setText(e.target.value)} />({len})
+    </span>
+  )
+}
+
+const DebugAtoms = () => {
+  useAtomsDebugValue()
+  return null
+}
+
+const App = () => (
+  <Provider>
+    <DebugAtoms />
+    <TextBox />
+  </Provider>
+)
+```
+
+[在 StackBlitz 中打开](https://stackblitz.com/edit/vitejs-vite-dmts5e?file=src%2FApp.tsx)
+
+## useAtomDevtools
+
+`useAtomDevtools` 是一个 React hook，用于将特定原子连接到 ReduxDevTools 扩展。
+
+```ts
+function useAtomDevtools<Value>(
+  anAtom: WritableAtom<Value, Value>,
+  options?: {
+    store?: Store
+    name?: string
+    enabled?: boolean
+  },
+): void
+```
+
+`useAtomDevtools` hook 接受一个泛型类型参数（对应原子中存储的类型）。此外，hook 接受两个调用参数：`anAtom` 和 `name`。
+`anAtom` 是要附加到 devtools 实例的原子。`name` 是一个可选参数，用于定义 devtools 实例的调试标签。如果未指定 `name`，将使用 `atom.debugLabel`。
+
+### 示例
+
+```ts
+import { useAtomDevtools } from 'jotai-devtools/utils'
+
+// 存储在原子中的类型接口。
+export interface Task {
+  label: string
+  complete: boolean
+}
+
+// 要调试的原子。
+export const tasksAtom = atom<Task[]>([])
+
+// 如果 useAtomDevtools 的 name 参数未定义，将使用此值。
+tasksAtom.debugLabel = 'Tasks'
+
+export const useTasksDevtools = () => {
+  // 只需传入要调试的原子即可调用该 hook。
+  useAtomDevtools(tasksAtom)
+
+  // 指定自定义类型参数
+  useAtomDevtools<Task[]>(tasksAtom)
+
+  // 你可以将两个 devtools 实例附加到同一个原子上，通过自定义名称来区分它们。
+  useAtomDevtools(tasksAtom, 'Tasks (Instance 1)')
+  useAtomDevtools(tasksAtom, 'Tasks (Instance 2)')
+}
+```
+
+## useAtomsDevtools
+
+⚠️ 注意：此 hook 是实验性的（欢迎反馈），仅在 `process.env.NODE_ENV !== 'production'` 环境中生效。
+
+`useAtomsDevtools` 是 `useAtomDevtools` 的全量版本，它会显示 store 中的所有原子，而非仅显示特定的某个。
+
+```ts
+function useAtomsDevtools(
+  name: string,
+  options?: {
+    store?: Store
+    enabled?: boolean
+  },
+): void
+```
+
+它接受一个 `name` 参数（用于命名 Redux devtools 实例）和一个 `store` 参数。
+
+使用此 API 时有一个限制：需要将 `useAtomsDevtools` 放在一个组件中，而被监控的原子应位于 React 树中该组件的下层（如下例中的 `AtomsDevtools`）。
+`AtomsDevtools` 组件可以作为应用的最佳实践。
+
+### 示例
+
+```jsx
+const countAtom = atom(0);
+const doubleCountAtom = atom((get) => get(countAtom) * 2);
+
+function Counter() {
+  const  [count, setCount] =  useAtom(countAtom);
+  const  [doubleCount] =  useAtom(doubleCountAtom);
+
+  ...
+}
+
+const AtomsDevtools = ({ children }) => {
+  useAtomsDevtools('demo')
+  return children
+}
+
+export default function App()  {
+  return (
+    <AtomsDevtools>
+      <Counter />
+    </AtomsDevtools>
+  )
+ }
+```
+
+[在 StackBlitz 中打开](https://stackblitz.com/edit/vitejs-vite-lpr5rs?file=src%2FApp.tsx)
+
+## useAtomsSnapshot
+
+⚠️ 注意：此 hook 仅在 `process.env.NODE_ENV !== 'production'` 环境中生效。在生产环境中它会返回一个静态的空值。
+
+`useAtomsSnapshot` 会获取当前已挂载的原子及其状态的快照。
+
+```ts
+function useAtomsSnapshot(options?: { store?: Store }): AtomsSnapshot
+```
+
+它接受一个 `store` 参数，返回一个 `AtomsSnapshot`，本质上是一个 `Map<AnyAtom, unknown>`。你可以使用 `Map` API 来遍历原子及其状态。
+此 hook 主要用于调试和开发者工具场景。
+
+使用此 hook 时需要注意，它会导致组件在每次状态变更时都重新渲染。
+
+### 示例
+
+```jsx
+import { Provider } from 'jotai'
+import { useAtomsSnapshot } from 'jotai-devtools/utils'
+
+const RegisteredAtoms = () => {
+  const atoms = useAtomsSnapshot()
+
+  return (
+    <div>
+      <p>Atom count: {atoms.size}</p>
+      <div>
+        {Array.from(atoms).map(([atom, atomValue]) => (
+          <p key={`${atom}`}>{`${atom.debugLabel}: ${atomValue}`}</p>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+const App = () => (
+  <Provider>
+    <RegisteredAtoms />
+  </Provider>
+)
+```
+
+## useGotoAtomsSnapshot
+
+⚠️ 注意：此 hook 仅在 `process.env.NODE_ENV !== 'production'` 环境中生效。在生产环境中它表现为一个空函数。
+
+`useGotoAtomsSnapshot` 会将当前 Jotai 状态更新为与传入的快照一致。
+
+```ts
+function useGotoAtomsSnapshot(options?: {
+  store?: Store
+}): (values: Iterable<readonly [AnyAtom, unknown]>) => void
+```
+
+此 hook 返回一个回调函数，该函数接受 `useAtomsSnapshot` hook 获取的 `snapshot`，并据此更新 Jotai 状态。它接受一个 `store` 参数。
+此 hook 主要用于调试和开发者工具场景。
+
+### 示例
+
+```jsx
+import { Provider } from 'jotai'
+import { useAtomsSnapshot, useGotoAtomsSnapshot } from 'jotai-devtools/utils'
+
+const petAtom = atom('cat')
+const colorAtom = atom('blue')
+
+const UpdateSnapshot = () => {
+  const snapshot = useAtomsSnapshot()
+  const goToSnapshot = useGotoAtomsSnapshot()
+  return (
+    <button
+      onClick={() => {
+        const newSnapshot = new Map(snapshot)
+        newSnapshot.set(petAtom, 'dog')
+        newSnapshot.set(colorAtom, 'green')
+        goToSnapshot(newSnapshot)
+      }}
+    >
+      Go to snapshot
+    </button>
+  )
+}
+```

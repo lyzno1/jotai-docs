@@ -1,0 +1,115 @@
+---
+title: Functional programming and Jotai
+nav: 7.04
+---
+
+{/*
+translation-source-path: basics/functional-programming-and-jotai.mdx
+translation-source-ref: v2.18.0
+translation-source-hash: 1f1601b62ef4f4017fe407d0bc16efbfe9011c82d97a480a5afb8ebfde2f8b13
+translation-status: translated
+*/}
+
+
+### 意想不到的相似性
+
+如果你仔细观察 getter 函数，你会发现它与 JavaScript 的某个语言特性有着惊人的相似之处。
+
+```tsx
+const nameAtom = atom('Visitor')
+const countAtom = atom(1)
+const greetingAtom = atom((get) => {
+  const name = get(nameAtom)
+  const count = get(countAtom)
+  return (
+    <div>
+      Hello, {name}! You have visited this page {count} times.
+    </div>
+  )
+})
+```
+
+将上面的代码与 `async`–`await` 进行比较：
+
+```tsx
+const namePromise = Promise.resolve('Visitor')
+const countPromise = Promise.resolve(1)
+const greetingPromise = (async function () {
+  const name = await namePromise
+  const count = await countPromise
+  return (
+    <div>
+      Hello, {name}! You have visited this page {count} times.
+    </div>
+  )
+})()
+```
+
+这种相似性并非巧合。原子和 Promise 都是 **Monad**（单子）†——一个来自函数式编程的概念。`greetingAtom` 和 `greetingPromise` 中使用的语法被称为 **do-notation**，是更朴素的 monad 接口的语法糖。
+
+### 关于 Monad
+
+Monad 接口赋予了原子和 Promise 接口的流畅性。Monad 接口让我们能够基于 `nameAtom` 和 `countAtom` 定义 `greetingAtom`，也让我们能够基于 `namePromise` 和 `countPromise` 定义 `greetingPromise`。
+
+如果你感兴趣，一个结构（比如 `Atom` 或 `Promise`）是 monad 的条件是你能为它实现以下函数。一个有趣的练习是尝试为 Array 实现 `of`、`map` 和 `join`。
+
+```ts
+type SomeMonad<T> = /* for example... */ Array<T>
+declare function of<T>(plainValue: T): SomeMonad<T>
+declare function map<T, V>(
+  anInstance: SomeMonad<T>,
+  transformContents: (contents: T) => V,
+): SomeMonad<V>
+declare function join<T>(nestedInstances: SomeMonad<SomeMonad<T>>): SomeMonad<T>
+```
+
+Promise 和 Atom 的共同血脉意味着许多模式和最佳实践可以在两者之间复用。我们来看一个例子。
+
+### 序列化（Sequencing）
+
+谈到回调地狱时，我们常提到样板代码、缩进层级和容易遗漏的错误。然而，将一个异步操作串联到另一个异步操作并不是回调地狱的全部问题。如果我们发起了四个网络请求并且需要等待它们全部完成呢？以下这样的代码片段曾经很常见：
+
+```ts
+const nPending = 4
+const results: string[]
+function callback(err, data) {
+  if (err) throw err
+  results.push(data)
+  if (results.length === nPending) {
+    // do something with results...
+  }
+}
+```
+
+但如果结果类型各不相同呢？而且顺序很重要呢？那我们就有更多令人头疼的工作要做！这段逻辑会在每个使用的地方重复，而且很容易出错。从 ES6 开始，我们只需调用 `Promise.all`：
+
+```ts
+declare function promiseAll<T>(promises: Array<Promise<T>>): Promise<Array<T>>
+```
+
+`Promise.all` "重新排列"了 `Array` 和 `Promise`。事实上，这个概念叫做 _sequencing_（序列化），它可以为所有 monad–_Traversable_ 对实现。许多类型的集合都是 Traversable，包括 Array。例如，以下是针对原子和数组特化的序列化实现：
+
+```ts
+function sequenceAtomArray<T>(atoms: Array<Atom<T>>): Atom<Array<T>> {
+  return atom((get) => atoms.map(get))
+}
+```
+
+### 总结
+
+Monad 已经引起数学家 60 年的兴趣，以及程序员 40 年的关注。有许多关于 monad 模式的资源可供参考。去看看吧！以下是精选的几个：
+
+- [_Inventing Monads_](https://stopa.io/post/247) by Stepan Parunashvili
+- [_How Monads Solve Problems_](https://thatsnomoon.dev/posts/ts-monads/) by ThatsNoMoon
+- Wiki 页面 [monad 教程列表](https://wiki.haskell.org/Monad_tutorials_timeline)
+- [Typeclassopedia](https://wiki.haskell.org/Typeclassopedia)（给好奇的你）
+
+学到的关于 Promise 的巧妙技巧很可能也适用于原子，就像 `Promise.all` 和 `sequenceAtomArray` 的关系一样。Monad 不是魔法，只是异常有用的工具，值得了解。
+
+---
+
+_注释_
+
+**[†]** ES6 的 Promise 并不是一个完全合法的 monad，因为它无法嵌套其他 Promise，例如 `Promise<Promise<number>>` 在语义上等同于 `Promise<number>`。这就是为什么 Promise 只有 `.then`，而没有同时提供 `.map` 和 `.flatMap`。ES6 的 Promise 更准确地说应该被描述为"类 monad 的"（monadic），而非严格的 monad。
+
+与 ES6 的 Promise 不同，ES6 的 Array 是一个完全合法的 monad。

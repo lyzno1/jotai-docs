@@ -1,0 +1,129 @@
+---
+title: Large objects
+nav: 9.01
+keywords: large,object
+---
+
+{/*
+translation-source-path: recipes/large-objects.mdx
+translation-source-ref: v2.18.0
+translation-source-hash: 56624e6d7ff9570379124cc2497b946e6d5101c19cd1f64132d26cf7a59c9ebd
+translation-status: translated
+*/}
+
+
+> 以下示例和说明基于这个 [codesandbox](https://codesandbox.io/s/zealous-sun-f2qnl?file=/src/App.tsx)，建议配合示例一起阅读以获得更好的理解。
+
+有时我们需要在原子中存储嵌套数据，并且可能需要在不同层级修改数据，或者只使用部分数据而不监听所有变化。
+
+考虑以下示例：
+
+```js
+const initialData = {
+  people: [
+    {
+      name: 'Luke Skywalker',
+      information: { height: 172 },
+      siblings: ['John Skywalker', 'Doe Skywalker'],
+    },
+    {
+      name: 'C-3PO',
+      information: { height: 167 },
+      siblings: ['John Doe', 'Doe John'],
+    },
+  ],
+  films: [
+    {
+      title: 'A New Hope',
+      planets: ['Tatooine', 'Alderaan'],
+    },
+    {
+      title: 'The Empire Strikes Back',
+      planets: ['Hoth'],
+    },
+  ],
+  info: {
+    tags: ['People', 'Films', 'Planets', 'Titles'],
+  },
+}
+```
+
+## focusAtom
+
+> `focusAtom` 根据你传入的焦点（focus）创建一个新原子。[jotai-optics](../extensions/optics.mdx#focusatom)
+
+我们使用这个工具来聚焦一个原子，并从数据的特定部分创建原子。例如，我们可能需要获取上述数据的 people 属性，做法如下：
+
+```js
+import { atom } from 'jotai'
+import { focusAtom } from 'jotai-optics'
+
+const dataAtom = atom(initialData)
+
+const peopleAtom = focusAtom(dataAtom, (optic) => optic.prop('people'))
+```
+
+`focusAtom` 返回 `WritableAtom`，这意味着可以修改 `peopleAtom` 的数据。
+
+如果我们修改了上述数据中的 `films` 属性，`peopleAtom` 不会触发重新渲染——这就是使用 `focusAtom` 的好处之一。
+
+## splitAtom
+
+> `splitAtom` 工具适用于需要为列表中每个元素获取单独原子的场景。[jotai/utils](../utilities/split.mdx)
+
+我们将这个工具用于返回数组值的原子。例如，上面创建的 `peopleAtom` 返回 people 属性数组，我们可以为数组中的每一项返回一个原子。如果数组原子是可写的，`splitAtom` 返回的原子也是可写的；如果数组原子是只读的，返回的原子同样是只读的。
+
+```js
+import { splitAtom } from 'jotai/utils'
+
+const peopleAtomsAtom = splitAtom(peopleAtom)
+```
+
+在组件中的用法如下：
+
+```jsx
+const People = () => {
+  const [peopleAtoms] = useAtom(peopleAtomsAtom)
+  return (
+    <div>
+      {peopleAtoms.map((personAtom) => (
+        <Person personAtom={personAtom} key={`${personAtom}`} />
+      ))}
+    </div>
+  )
+}
+```
+
+## selectAtom
+
+> 此函数创建一个派生原子，其值是原始原子值的函数。[jotai/utils](../utilities/select.mdx)
+
+这个工具类似于 `focusAtom`，但始终返回只读原子。
+
+假设我们想使用 info 数据，且其数据始终不会改变。我们可以从中创建一个只读原子，然后用 select 选取所需部分。
+
+```js
+// 首先基于 initialData.info 创建一个派生原子
+const infoAtom = atom((get) => get(dataAtom).info)
+```
+
+然后在组件中使用：
+
+```jsx
+import { atom, useAtom } from 'jotai'
+import { selectAtom, splitAtom } from 'jotai/utils'
+
+const tagsSelector = (s) => s.tags
+const Tags = () => {
+  const tagsAtom = selectAtom(infoAtom, tagsSelector)
+  const tagsAtomsAtom = splitAtom(tagsAtom)
+  const [tagAtoms] = useAtom(tagsAtomsAtom)
+  return (
+    <div>
+      {tagAtoms.map((tagAtom) => (
+        <Tag key={`${tagAtom}`} tagAtom={tagAtom} />
+      ))}
+    </div>
+  )
+}
+```

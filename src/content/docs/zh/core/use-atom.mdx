@@ -1,0 +1,152 @@
+---
+title: useAtom
+description: This doc describes core `jotai` bundle.
+nav: 2.02
+keywords: use,useatom,useatomvalue,usesetatom,atomvalue,setatom
+---
+
+{/*
+translation-source-path: core/use-atom.mdx
+translation-source-ref: v2.18.0
+translation-source-hash: 0ea7eb6e2773c4f38ec7dd0865b4a76f38d81580cd3558038593db6b795fbeda
+translation-status: translated
+*/}
+
+
+## useAtom
+
+`useAtom` hook 用于从状态中读取原子的值。状态可以看作是原子配置和原子值之间的 WeakMap。
+
+`useAtom` hook 返回一个元组，包含原子的值和更新函数，与 React 的 `useState` 类似。它接受一个通过 `atom()` 创建的原子配置作为参数。
+
+在创建原子配置时，它并没有关联任何值。只有当原子通过 `useAtom` 被使用时，初始值才会被存储到状态中。如果是派生原子，则会调用读取函数来计算初始值。当原子不再被使用（即所有使用它的组件都已卸载，且原子配置不再存在）时，状态中的值会被垃圾回收。
+
+```js
+const [value, setValue] = useAtom(anAtom)
+```
+
+`setValue` 只接受一个参数，该参数会作为第三个参数传递给原子的写入函数。最终结果取决于写入函数的实现方式。如果没有显式设置写入函数，原子将直接接收传递给 `setValue` 的值。
+
+**注意：** 如 _atom_ 章节所述，创建原子时引用相等性非常重要，因此需要正确处理，否则可能导致无限循环。
+
+```js
+const stableAtom = atom(0)
+const Component = () => {
+  const [atomValue] = useAtom(atom(0)) // This will cause an infinite loop since the atom instance is being recreated in every render
+  const [atomValue] = useAtom(stableAtom) // This is fine
+  const [derivedAtomValue] = useAtom(
+    useMemo(
+      // This is also fine
+      () => atom((get) => get(stableAtom) * 2),
+      [],
+    ),
+  )
+}
+```
+
+**注意：** 请记住，React 负责调用你的组件，这意味着组件必须是幂等的，可以被多次调用。即使 props 或原子没有变化，你也经常会看到额外的重新渲染。没有 commit 的额外重新渲染是预期行为，因为这是 React 18 中 useReducer 的默认行为。
+
+### 签名
+
+```ts
+// primitive or writable derived atom
+function useAtom<Value, Update>(
+  atom: WritableAtom<Value, Update>,
+  options?: { store?: Store },
+): [Value, SetAtom<Update>]
+
+// read-only atom
+function useAtom<Value>(
+  atom: Atom<Value>,
+  options?: { store?: Store },
+): [Value, never]
+```
+
+### 原子依赖的工作原理
+
+每次调用"读取"函数时，依赖和依赖者都会被刷新。
+
+> 读取函数是 atom 的第一个参数。
+> 如果 B 依赖于 A，则 A 是 B 的依赖，B 是 A 的依赖者。
+
+```js
+const uppercaseAtom = atom((get) => get(textAtom).toUpperCase())
+```
+
+当你创建原子时，依赖关系尚不存在。在首次使用时，我们运行读取函数并得出 `uppercaseAtom` 依赖于 `textAtom`。因此 `uppercaseAtom` 被添加到 `textAtom` 的依赖者列表中。当我们重新运行 `uppercaseAtom` 的读取函数时（因为其 `textAtom` 依赖已更新），依赖关系会被重新创建（在本例中是相同的）。然后我们从 `textAtom` 中移除过时的依赖者，并替换为最新版本。
+
+### 按需创建原子
+
+虽然这里的基本示例展示了在组件外部全局定义原子，但对于在何处或何时创建原子并没有限制。只要记住原子是通过对象引用标识来识别的，就可以随时创建它们。
+
+如果在渲染函数中创建原子，通常需要使用 `useRef` 或 `useMemo` 等 hook 进行记忆化。否则，每次组件渲染时原子都会被重新创建。
+
+你可以创建原子并将其存储在 `useState` 中，甚至存储在另一个原子中。请参阅 [issue #5](https://github.com/pmndrs/jotai/issues/5) 中的示例。
+
+你也可以在全局某处缓存原子。请参阅[这个示例](https://twitter.com/dai_shi/status/1317653548314718208)或[那个示例](https://github.com/pmndrs/jotai/issues/119#issuecomment-706046321)。
+
+关于参数化原子，请查看 utils 中的 [`atomFamily`](../utilities/family.mdx)。
+
+## useAtomValue
+
+```jsx
+const countAtom = atom(0)
+
+const Counter = () => {
+  const setCount = useSetAtom(countAtom)
+  const count = useAtomValue(countAtom)
+
+  return (
+    <>
+      <div>count: {count}</div>
+      <button onClick={() => setCount(count + 1)}>+1</button>
+    </>
+  )
+}
+```
+
+与 `useSetAtom` hook 类似，`useAtomValue` 允许你访问只读原子的值。不过，它也可以用于访问读写原子的值。
+
+## useSetAtom
+
+```jsx
+const switchAtom = atom(false)
+
+const SetTrueButton = () => {
+  const setCount = useSetAtom(switchAtom)
+  const setTrue = () => setCount(true)
+
+  return (
+    <div>
+      <button onClick={setTrue}>Set True</button>
+    </div>
+  )
+}
+
+const SetFalseButton = () => {
+  const setCount = useSetAtom(switchAtom)
+  const setFalse = () => setCount(false)
+
+  return (
+    <div>
+      <button onClick={setFalse}>Set False</button>
+    </div>
+  )
+}
+
+export default function App() {
+  const state = useAtomValue(switchAtom)
+
+  return (
+    <div>
+      State: <b>{state.toString()}</b>
+      <SetTrueButton />
+      <SetFalseButton />
+    </div>
+  )
+}
+```
+
+如果你需要更新原子的值而不需要读取它，可以使用 `useSetAtom()`。
+
+这在关注性能时特别有用，因为 `const [, setValue] = useAtom(valueAtom)` 会在每次 `valueAtom` 更新时导致不必要的重新渲染。

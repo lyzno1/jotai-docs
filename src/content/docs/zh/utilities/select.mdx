@@ -1,0 +1,99 @@
+---
+title: Select
+nav: 3.99
+keywords: select
+published: false
+---
+
+{/*
+translation-source-path: utilities/select.mdx
+translation-source-ref: v2.18.0
+translation-source-hash: 8f2aa3b2b8271a51d53f698807b7e8351d423259a41dc36958cb0c8d5d95826d
+translation-status: translated
+*/}
+
+
+## selectAtom
+
+注意：尽管名称如此，`selectAtom` 是作为一种逃生舱提供的。使用它意味着构建的不是 100% 纯粹的原子模型。请优先使用派生原子，仅在 `equalityFn` 或 `prevSlice` 不可避免时才使用 `selectAtom`。
+
+### 签名
+
+```ts
+function selectAtom<Value, Slice>(
+  anAtom: Atom<Value>,
+  selector: (v: Value, prevSlice?: Slice) => Slice,
+  equalityFn: (a: Slice, b: Slice) => boolean = Object.is,
+): Atom<Slice>
+```
+
+此函数创建一个派生原子，其值是由 `selector` 从原始原子的值派生而来。
+每当原始原子发生变化时，选择器函数都会运行；只有当 `equalityFn` 判定派生值发生了变化时，才会更新派生原子。
+默认情况下，`equalityFn` 使用引用相等性，但你可以提供自定义的深度比较函数来稳定派生值。
+
+### 示例
+
+```js
+const defaultPerson = {
+  name: {
+    first: 'Jane',
+    last: 'Doe',
+  },
+  birth: {
+    year: 2000,
+    month: 'Jan',
+    day: 1,
+    time: {
+      hour: 1,
+      minute: 1,
+    },
+  },
+}
+
+// 原始原子
+const personAtom = atom(defaultPerson)
+
+// 追踪 person.name。当 person.name 对象变化时更新，
+// 即使 name.first 和 name.last 实际上没有改变。
+const nameAtom = selectAtom(personAtom, (person) => person.name)
+
+// 追踪 person.birth。当 year、month、day、hour 或 minute 变化时更新。
+// 使用 deepEquals 意味着如果 birth 字段被替换为包含相同数据的新对象，
+// 此原子不会更新。例如，当 person 从数据库重新读取时。
+const birthAtom = selectAtom(personAtom, (person) => person.birth, deepEquals)
+```
+
+### 保持稳定引用
+
+一如既往，为了防止在渲染周期中使用 `useAtom` 时出现无限循环，你必须向 `useAtom` 提供稳定的原子引用。
+对于 `selectAtom`，我们需要基础原子和选择器**两者**都是稳定的。
+
+```js
+const [value] = useAtom(selectAtom(atom(0), (val) => val)) // 这会导致无限循环
+```
+
+你有多种方式来满足这些约束：
+
+```js
+const baseAtom = atom(0) // 稳定的
+const baseSelector = (v) => v // 稳定的
+const Component = () => {
+  // 方案 1：使用 "useMemo" 记忆化整个结果原子
+  const [value] = useAtom(useMemo(() => selectAtom(baseAtom, (v) => v), []))
+
+  // 方案 2：使用 "useCallback" 记忆化内联回调
+  const [value] = useAtom(
+    selectAtom(
+      baseAtom,
+      useCallback((v) => v, []),
+    ),
+  )
+
+  // 方案 3：所有约束已经满足
+  const [value] = useAtom(selectAtom(baseAtom, baseSelector))
+}
+```
+
+### Stackblitz
+
+[在 StackBlitz 中打开](https://stackblitz.com/edit/vitejs-vite-tgejq7?file=src%2FApp.tsx)

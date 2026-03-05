@@ -1,0 +1,244 @@
+---
+title: Bunja
+description: State Lifetime Manager
+nav: 5.03
+keywords: scope,di,raii,lifetime
+---
+
+{/*
+translation-source-path: third-party/bunja.mdx
+translation-source-ref: v2.18.0
+translation-source-hash: c9be1de91cd27d102cdfcd01ddda3d3fd26272b0efde70df05852dc954f6048e
+translation-status: translated
+*/}
+
+
+[Bunja](https://github.com/disjukr/bunja) 是一个轻量级的状态生命周期管理器。
+
+它为 Jotai 原子提供了一个 RAII 封装。
+
+---
+
+参见：
+
+- [Bunja README](https://github.com/disjukr/bunja/blob/main/README.md)
+- [演示文稿](https://github.com/disjukr/bunja/tree/main/presentations)
+
+## 安装
+
+```
+npm install bunja
+```
+
+### 定义 Bunja
+
+你可以使用 `bunja` 函数来定义一个 bunja。
+
+当通过 `useBunja` hook 访问已定义的 bunja 时，会创建一个 bunja 实例。
+
+如果渲染树中所有引用该 bunja 的组件都被移除，bunja 实例将自动销毁。
+
+如果你想在 bunja 生命周期开始和结束时触发副作用，可以使用 `bunja.effect` 函数。
+
+```ts
+import { bunja } from 'bunja'
+import { useBunja } from 'bunja/react'
+
+const countBunja = bunja(() => {
+  const countAtom = atom(0)
+
+  bunja.effect(() => {
+    console.log('mounted')
+    return () => console.log('unmounted')
+  })
+
+  return { countAtom }
+})
+
+function MyComponent() {
+  const { countAtom } = useBunja(countBunja)
+  const [count, setCount] = useAtom(countAtom)
+  // Your component logic here
+}
+```
+
+### 定义依赖其他 Bunja 的 Bunja
+
+如果你想管理一个生命周期较长的状态和另一个生命周期较短的状态，可以创建一个（较短的）bunja 依赖于一个（较长的）bunja。
+
+例如，可以想象一个持有页面状态的 bunja 和另一个持有弹窗状态的 bunja。
+
+页面状态的生命周期比弹窗状态长，弹窗状态应在弹窗打开时创建、关闭时销毁。
+
+在这种情况下，可以编写如下代码：
+
+```tsx
+const pageBunja = bunja(() => {
+  const pageStateAtom = atom({})
+  return { pageStateAtom }
+})
+
+const childBunja = bunja(() => {
+  const { pageStateAtom } = bunja.use(pageBunja)
+  const childStateAtom = atom((get) => ({
+    ...get(pageStateAtom),
+    child: 'state',
+  }))
+  return { childStateAtom }
+})
+
+const modalBunja = bunja(() => {
+  const { pageStateAtom } = bunja.use(pageBunja)
+  const modalStateAtom = atom((get) => ({
+    ...get(pageStateAtom),
+    modal: 'state',
+  }))
+
+  bunja.effect(() => {
+    console.log('modal opened')
+    return () => console.log('modal closed')
+  })
+
+  return { modalStateAtom }
+})
+
+function Page() {
+  const [modalOpen, setModalOpen] = useState(false)
+  return (
+    <>
+      <Child />
+      {modalOpen && <Modal />}
+    </>
+  )
+}
+
+function Child() {
+  const { childStateAtom } = useBunja(childBunja)
+  const childState = useAtomValue(childStateAtom)
+  // ...
+}
+
+function Modal() {
+  const { modalStateAtom } = useBunja(modalBunja)
+  const modalState = useAtomValue(modalStateAtom)
+  // ...
+}
+```
+
+注意 `pageBunja` 并没有被直接 `useBunja` 调用。
+
+当你对 `childBunja` 或 `modalBunja` 使用 `useBunja` 时，由于它们依赖于 `pageBunja`，效果等同于 `pageBunja` 也被 `useBunja` 了。
+
+当弹窗被卸载后，不再有任何地方使用 `useBunja(modalBunja)`，因此 `modalBunja` 的实例会自动销毁。
+
+### 使用 Scope 进行依赖注入
+
+你可以将 bunja 用于局部状态管理。
+
+当你将 scope 指定为 bunja 的依赖时，会根据注入 scope 的不同值创建独立的 bunja 实例。
+
+```ts
+import { bunja, createScope } from 'bunja'
+
+const UrlScope = createScope()
+
+const fetchBunja = bunja(() => {
+  const url = bunja.use(UrlScope)
+
+  const queryAtom = atomWithQuery((get) => ({
+    queryKey: [url],
+    queryFn: async () => (await fetch(url)).json(),
+  }))
+
+  return { queryAtom }
+})
+```
+
+#### 通过 React context 注入依赖
+
+如果你将 scope 绑定到 React context，依赖该 scope 的 bunja 就能从对应的 React context 中获取值。
+
+在下面的示例中，有两个 React 实例（`<ChildComponent />`）引用了同一个 `fetchBunja`，但由于它们各自看到不同的 context 值，因此也会创建两个独立的 bunja 实例。
+
+```tsx
+import { createContext } from 'react'
+import { bunja, createScope } from 'bunja'
+import { bindScope } from 'bunja/react'
+
+const UrlContext = createContext('https://example.com/')
+const UrlScope = createScope()
+bindScope(UrlScope, UrlContext)
+
+const fetchBunja = bunja(() => {
+  const url = bunja.use(UrlScope)
+
+  const queryAtom = atomWithQuery((get) => ({
+    queryKey: [url],
+    queryFn: async () => (await fetch(url)).json(),
+  }))
+
+  return { queryAtom }
+})
+
+function ParentComponent() {
+  return (
+    <>
+      <UrlContext value="https://example.com/foo">
+        <ChildComponent />
+      </UrlContext>
+      <UrlContext value="https://example.com/bar">
+        <ChildComponent />
+      </UrlContext>
+    </>
+  )
+}
+
+function ChildComponent() {
+  const { queryAtom } = useBunja(fetchBunja)
+  const { data, isPending, isError } = useAtomValue(queryAtom)
+  // Your component logic here
+}
+```
+
+你可以使用 `createScopeFromContext` 函数一步完成 scope 的创建和 context 的绑定。
+
+```ts
+import { createContext } from 'react'
+import { createScopeFromContext } from 'bunja/react'
+
+const UrlContext = createContext('https://example.com/')
+const UrlScope = createScopeFromContext(UrlContext)
+```
+
+#### 直接向 scope 注入依赖
+
+你可能想在创建注入值的 React 组件中直接使用 bunja。
+
+在这种情况下，你可以使用 `useBunja` hook 的第二个参数直接向 scope 注入值，而无需额外包裹 context。
+
+```tsx
+function MyComponent() {
+  const { queryAtom } = useBunja(fetchBunja, [
+    UrlScope.bind('https://example.com/'),
+  ])
+  const { data, isPending, isError } = useAtomValue(queryAtom)
+  // Your component logic here
+}
+```
+
+##### 在 bunja 内部执行相同操作
+
+你可以使用 `bunja.fork` 在 bunja 初始化函数内部注入 scope 值。
+
+```ts
+const myBunja = bunja(() => {
+  const fooData = bunja.fork(fetchBunja, [
+    UrlScope.bind('https://example.com/foo'),
+  ])
+  const barData = bunja.fork(fetchBunja, [
+    UrlScope.bind('https://example.com/bar'),
+  ])
+
+  return { fooData, barData }
+})
+```

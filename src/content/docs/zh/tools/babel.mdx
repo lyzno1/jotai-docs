@@ -1,0 +1,139 @@
+---
+title: Babel
+description: This doc describes the `jotai-babel` package.
+nav: 6.02
+keywords: babel,gatsby,fast,refresh
+---
+
+{/*
+translation-source-path: tools/babel.mdx
+translation-source-ref: v2.18.0
+translation-source-hash: f9da5abefa21ae6154ec3bf7b55442c76fb625d7497e4c8434e6ac6e67823c72
+translation-status: translated
+*/}
+
+
+> **已弃用**：`jotai/babel` 包已弃用，将在 v3 中移除。请改用 [`jotai-babel`](https://github.com/jotaijs/jotai-babel) 包。
+
+## jotai-babel/plugin-react-refresh
+
+此插件为 Jotai 原子添加了 React Refresh 支持。确保在使用 React Refresh 开发时不会丢失状态。
+
+### 用法
+
+在 `babel` 配置文件中：
+
+```json
+{
+  "plugins": ["jotai-babel/plugin-react-refresh"]
+}
+```
+
+该插件能识别一组预定义的原子函数名（如 'atom'、'atomFamily'、'atomWithDefault'）。如果你使用了自定义的原子函数名，可以显式地提供它们以确保被正确识别。
+
+以下是在 Babel 中配置的方式：
+
+```json
+{
+  "plugins": [
+    ["jotai-babel/plugin-react-refresh", { "customAtomNames": ["customAtom"] }]
+  ]
+}
+```
+
+示例见下方。
+
+## jotai-babel/plugin-debug-label
+
+Jotai 基于对象引用而非键（与 Recoil 不同）。这意味着原子没有标识符。为了识别原子，可以为原子添加 `debugLabel`，该标签会在 React 开发者工具中显示。
+
+然而，手动为每个原子添加 `debugLabel` 很快会变得繁琐。
+
+这个 `babel` 插件会根据变量名自动为每个原子添加 `debugLabel`。
+
+该插件会将以下代码：
+
+```js
+export const countAtom = atom(0)
+```
+
+转换为：
+
+```js
+export const countAtom = atom(0)
+countAtom.debugLabel = 'countAtom'
+```
+
+默认导出也会被处理，基于文件名：
+
+```js
+// countAtom.ts
+export default atom(0)
+```
+
+转换为：
+
+```js
+// countAtom.ts
+const countAtom = atom(0)
+countAtom.debugLabel = 'countAtom'
+export default countAtom
+```
+
+### 用法
+
+建议在生产构建中禁用此插件以避免不必要的开销。你可以根据环境在 Babel 配置中条件性地引入它。
+
+在 `babel` 配置文件中：
+
+```json
+{
+  "plugins": ["jotai-babel/plugin-debug-label"]
+}
+```
+
+该插件能识别一组预定义的原子函数名（如 'atom'、'atomFamily'、'atomWithDefault'）。如果你使用了自定义的原子函数名，可以显式地提供它们以确保被正确识别。
+
+以下是在 Babel 中配置的方式：
+
+```json
+{
+  "plugins": [
+    ["jotai-babel/plugin-debug-label", { "customAtomNames": ["customAtom"] }]
+  ]
+}
+```
+
+示例见下方。
+
+## jotai-babel/preset
+
+Jotai 附带了一个 `babel preset`，其中包含为 Jotai 创建的插件。
+
+### 用法
+
+在 `babel` 配置文件中：
+
+```json
+{
+  "presets": ["jotai-babel/preset"]
+}
+```
+
+你也可以向 preset 提供自定义的原子函数名：
+
+```json
+{
+  "presets": [["jotai-babel/preset", { "customAtomNames": ["customAtom"] }]]
+}
+```
+
+### 示例
+
+#### Next.js
+
+[在 CodeSandbox 中打开](https://codesandbox.io/s/o2di2)
+
+#### Parcel
+
+[在 CodeSandbox 中打开](https://codesandbox.io/s/bgf3b)

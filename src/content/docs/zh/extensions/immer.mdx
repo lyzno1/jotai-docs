@@ -1,0 +1,128 @@
+---
+title: Immer
+description: This doc describes Immer extension.
+nav: 4.04
+keywords: immer
+---
+
+{/*
+translation-source-path: extensions/immer.mdx
+translation-source-ref: v2.18.0
+translation-source-hash: 97b38c1b0d4fa19b47f696a9c991ac898c5e7a38dbf7c0cb948816e1cda291d8
+translation-status: translated
+*/}
+
+
+### 安装
+
+你需要安装 `immer` 和 `jotai-immer` 才能使用此功能。
+
+```
+npm install immer jotai-immer
+```
+
+## atomWithImmer
+
+`atomWithImmer` 创建一个与常规 [`atom`](../core/atom.mdx) 类似的新原子，但使用了不同的 `writeFunction`。在这个包中，我们没有只读原子，因为这些函数的核心在于 immer 的 produce（可变性）功能。
+`writeFunction` 的签名为 `(get, set, update: (draft: Draft<Value>) => void) => void`。
+
+```jsx
+import { useAtom } from 'jotai'
+import { atomWithImmer } from 'jotai-immer'
+
+const countAtom = atomWithImmer({ value: 0 })
+
+const Counter = () => {
+  const [count] = useAtom(countAtom)
+  return <div>count: {count.value}</div>
+}
+
+const Controls = () => {
+  const [, setCount] = useAtom(countAtom)
+  // setCount === update : (draft: Draft<Value>) => void
+  const inc = () =>
+    setCount((draft) => {
+      ++draft.value
+    })
+  return <button onClick={inc}>+1</button>
+}
+```
+
+### 示例
+
+查看 atomWithImmer 的示例：
+
+[Open in StackBlitz](https://stackblitz.com/edit/vitejs-vite-tblppw?file=src%2FApp.tsx)
+
+## withImmer
+
+`withImmer` 接收一个原子并返回一个派生原子，与 `atomWithImmer` 一样使用了不同的 `writeFunction`。
+
+```jsx
+import { useAtom, atom } from 'jotai'
+import { withImmer } from 'jotai-immer'
+
+const primitiveAtom = atom({ value: 0 })
+const countAtom = withImmer(primitiveAtom)
+
+const Counter = () => {
+  const [count] = useAtom(countAtom)
+  return <div>count: {count.value}</div>
+}
+
+const Controls = () => {
+  const [, setCount] = useAtom(countAtom)
+  // setCount === update : (draft: Draft<Value>) => void
+  const inc = () =>
+    setCount((draft) => {
+      ++draft.value
+    })
+  return <button onClick={inc}>+1</button>
+}
+```
+
+### 示例
+
+查看 withImmer 的示例：
+
+[Open in StackBlitz](https://stackblitz.com/edit/vitejs-vite-jwfjqm?file=src%2FApp.tsx)
+
+## useImmerAtom
+
+这个 hook 接收一个原子，并将该原子的 `writeFunction` 替换为类似 immer 的新 `writeFunction`，与前面的辅助函数类似。
+
+```jsx
+import { atom } from 'jotai'
+import { useImmerAtom } from 'jotai-immer'
+
+const primitiveAtom = atom({ value: 0 })
+
+const Counter = () => {
+  const [count] = useImmerAtom(primitiveAtom)
+  return <div>count: {count.value}</div>
+}
+
+const Controls = () => {
+  const [, setCount] = useImmerAtom(primitiveAtom)
+  // setCount === update : (draft: Draft<Value>) => void
+  const inc = () =>
+    setCount((draft) => {
+      ++draft.value
+    })
+  return <button onClick={inc}>+1</button>
+}
+```
+
+最好不要将 `withImmer` 和 `atomWithImmer` 与 `useImmerAtom` 一起使用，因为它们已经提供了类似 immer 的 `writeFunction`，不需要再创建新的。
+
+如果你只需要 `useImmerAtom` 的 setter 部分，可以使用 `useSetImmerAtom`。
+
+### 示例
+
+查看 useImmerAtom 的示例：
+
+[Open in StackBlitz](https://stackblitz.com/edit/vitejs-vite-k2rixl?file=src%2FApp.tsx)
+
+## 演示
+
+[Open in StackBlitz](https://stackblitz.com/edit/vitejs-vite-tksbwq?file=src%2FApp.tsx)

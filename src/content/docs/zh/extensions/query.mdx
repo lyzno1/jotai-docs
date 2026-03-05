@@ -1,0 +1,454 @@
+---
+title: Query
+description: This doc describes TanStack Query extension.
+nav: 4.02
+keywords: tanstack,query
+---
+
+{/*
+translation-source-path: extensions/query.mdx
+translation-source-ref: v2.18.0
+translation-source-hash: 96b4ea77a16acf49dd42a25a6c4ad2df6735276f907a4710f9cb097eed950792
+translation-status: translated
+*/}
+
+
+[TanStack Query](https://tanstack.com/query/) 提供了一套管理异步状态（通常是外部数据）的函数。
+
+引用 [Overview 文档](https://tanstack.com/query/v5/docs/framework/react/overview)：
+
+> React Query 常被描述为 React 缺失的数据获取库，但从更技术的角度来说，它让你在 React 应用中**获取、缓存、同步和更新服务端状态**变得轻而易举。
+
+[jotai-tanstack-query](https://github.com/jotai-labs/jotai-tanstack-query) 是 Jotai 的 TanStack Query 扩展库。它提供了涵盖所有 TanStack Query 功能的出色接口，让你能将这些功能与现有的 Jotai 状态结合使用。
+
+### 支持
+
+jotai-tanstack-query 目前支持 TanStack Query v5。
+
+### 安装
+
+除了 `jotai` 之外，你还需要安装 `jotai-tanstack-query` 和 `@tanstack/query-core` 才能使用此扩展。
+
+```bash
+npm install jotai-tanstack-query @tanstack/query-core
+```
+
+### 渐进式采用
+
+你可以在应用中渐进式采用 `jotai-tanstack-query`。它不是非此即彼的方案，你只需确保使用相同的 QueryClient 实例即可。[QueryClient 设置](#referencing-the-same-instance-of-query-client-in-your-project)。
+
+```jsx
+// existing useQueryHook
+const { data, isPending, isError } = useQuery({
+  queryKey: ['todos'],
+  queryFn: fetchTodoList,
+})
+
+// jotai-tanstack-query
+const todosAtom = atomWithQuery(() => ({
+  queryKey: ['todos'],
+}))
+
+const [{ data, isPending, isError }] = useAtom(todosAtom)
+```
+
+### 导出函数
+
+- `atomWithQuery` 对应 [useQuery](https://tanstack.com/query/v5/docs/react/reference/useQuery)
+- `atomWithInfiniteQuery` 对应 [useInfiniteQuery](https://tanstack.com/query/v5/docs/react/reference/useInfiniteQuery)
+- `atomWithMutation` 对应 [useMutation](https://tanstack.com/query/v5/docs/react/reference/useMutation)
+- `atomWithSuspenseQuery` 对应 [useSuspenseQuery](https://tanstack.com/query/v5/docs/react/reference/useSuspenseQuery)
+- `atomWithSuspenseInfiniteQuery` 对应 [useSuspenseInfiniteQuery](https://tanstack.com/query/v5/docs/react/reference/useSuspenseInfiniteQuery)
+- `atomWithMutationState` 对应 [useMutationState](https://tanstack.com/query/v5/docs/react/reference/useMutationState)
+
+所有函数遵循相同的签名。
+
+```ts
+const dataAtom = atomWithSomething(getOptions, getQueryClient)
+```
+
+第一个 `getOptions` 参数是一个返回 observer 输入的函数。
+第二个可选的 `getQueryClient` 参数是一个返回 [QueryClient](https://tanstack.com/query/v5/docs/reference/QueryClient) 的函数。
+
+### atomWithQuery 用法
+
+`atomWithQuery` 创建一个新原子，实现了 TanStack Query 的标准 [`Query`](https://tanstack.com/query/v5/docs/react/guides/queries)。
+
+```jsx
+import { atom, useAtom } from 'jotai'
+import { atomWithQuery } from 'jotai-tanstack-query'
+
+const idAtom = atom(1)
+const userAtom = atomWithQuery((get) => ({
+  queryKey: ['users', get(idAtom)],
+  queryFn: async ({ queryKey: [, id] }) => {
+    const res = await fetch(`https://jsonplaceholder.typicode.com/users/${id}`)
+    return res.json()
+  },
+}))
+
+const UserData = () => {
+  const [{ data, isPending, isError }] = useAtom(userAtom)
+
+  if (isPending) return <div>Loading...</div>
+  if (isError) return <div>Error</div>
+
+  return <div>{JSON.stringify(data)}</div>
+}
+```
+
+### atomWithInfiniteQuery 用法
+
+`atomWithInfiniteQuery` 与 `atomWithQuery` 非常相似，但它用于 `InfiniteQuery`，适用于需要分页的数据。你可以[在这里阅读更多关于无限查询的内容](https://tanstack.com/query/v5/docs/framework/react/guides/infinite-queries)。
+
+> 渲染可以不断"加载更多"数据到现有数据集或"无限滚动"的列表，也是一种非常常见的 UI 模式。React Query 支持一个有用的 useQuery 变体 useInfiniteQuery 来查询这类列表。
+
+与标准查询原子的显著区别在于额外的选项 `getNextPageParam` 和 `getPreviousPageParam`，你将使用它们来告知查询如何获取额外的页面。
+
+```jsx
+import { atom, useAtom } from 'jotai'
+import { atomWithInfiniteQuery } from 'jotai-tanstack-query'
+
+const postsAtom = atomWithInfiniteQuery(() => ({
+  queryKey: ['posts'],
+  queryFn: async ({ pageParam }) => {
+    const res = await fetch(`https://jsonplaceholder.typicode.com/posts?_page=${pageParam}`)
+    return res.json()
+  },
+  getNextPageParam: (lastPage, allPages, lastPageParam) => lastPageParam + 1,
+  initialPageParam: 1,
+}))
+
+const Posts = () => {
+  const [{ data, fetchNextPage, isPending, isError, isFetching }] =
+    useAtom(postsAtom)
+
+  if (isPending) return <div>Loading...</div>
+  if (isError) return <div>Error</div>
+
+  return (
+    <>
+      {data.pages.map((page, index) => (
+        <div key={index}>
+          {page.map((post: any) => (
+            <div key={post.id}>{post.title}</div>
+          ))}
+        </div>
+      ))}
+      <button onClick={() => fetchNextPage()}>Next</button>
+    </>
+  )
+}
+```
+
+### atomWithMutation 用法
+
+`atomWithMutation` 创建一个新原子，实现了 TanStack Query 的标准 [`Mutation`](https://tanstack.com/query/v5/docs/framework/react/guides/mutations)。
+
+> 与查询不同，mutation 通常用于创建/更新/删除数据或执行服务端副作用。
+
+```tsx
+const postAtom = atomWithMutation(() => ({
+  mutationKey: ['posts'],
+  mutationFn: async ({ title }: { title: string }) => {
+    const res = await fetch(`https://jsonplaceholder.typicode.com/posts`, {
+      method: 'POST',
+      body: JSON.stringify({
+        title,
+        body: 'body',
+        userId: 1,
+      }),
+      headers: {
+        'Content-type': 'application/json; charset=UTF-8',
+      },
+    })
+    const data = await res.json()
+    return data
+  },
+}))
+
+const Posts = () => {
+  const [{ mutate, status }] = useAtom(postAtom)
+  return (
+    <div>
+      <button onClick={() => mutate({ title: 'foo' })}>Click me</button>
+      <pre>{JSON.stringify(status, null, 2)}</pre>
+    </div>
+  )
+}
+```
+
+### atomWithMutationState 用法
+
+`atomWithMutationState` 创建一个新原子，使你可以访问 [`MutationCache`](https://tanstack.com/query/v5/docs/react/reference/useMutationState) 中的所有 mutation。
+
+```jsx
+const mutationStateAtom = atomWithMutationState((get) => ({
+  filters: {
+    mutationKey: ['posts'],
+  },
+}))
+```
+
+### Suspense
+
+jotai-tanstack-query 也可以与 React 的 Suspense 一起使用。
+
+### atomWithSuspenseQuery 用法
+
+```jsx
+import { atom, useAtom } from 'jotai'
+import { atomWithSuspenseQuery } from 'jotai-tanstack-query'
+
+const idAtom = atom(1)
+const userAtom = atomWithSuspenseQuery((get) => ({
+  queryKey: ['users', get(idAtom)],
+  queryFn: async ({ queryKey: [, id] }) => {
+    const res = await fetch(`https://jsonplaceholder.typicode.com/users/${id}`)
+    return res.json()
+  },
+}))
+
+const UserData = () => {
+  const [{ data }] = useAtom(userAtom)
+
+  return <div>{JSON.stringify(data)}</div>
+}
+```
+
+### atomWithSuspenseInfiniteQuery 用法
+
+```jsx
+import { atom, useAtom } from 'jotai'
+import { atomWithSuspenseInfiniteQuery } from 'jotai-tanstack-query'
+
+const postsAtom = atomWithSuspenseInfiniteQuery(() => ({
+  queryKey: ['posts'],
+  queryFn: async ({ pageParam }) => {
+    const res = await fetch(`https://jsonplaceholder.typicode.com/posts?_page=${pageParam}`)
+    return res.json()
+  },
+  getNextPageParam: (lastPage, allPages, lastPageParam) => lastPageParam + 1,
+  initialPageParam: 1,
+}))
+
+const Posts = () => {
+  const [{ data, fetchNextPage, isPending, isError, isFetching }] =
+    useAtom(postsAtom)
+
+  return (
+    <>
+      {data.pages.map((page, index) => (
+        <div key={index}>
+          {page.map((post: any) => (
+            <div key={post.id}>{post.title}</div>
+          ))}
+        </div>
+      ))}
+      <button onClick={() => fetchNextPage()}>Next</button>
+    </>
+  )
+}
+```
+
+### 在项目中引用同一个 Query Client 实例
+
+也许你的项目中有一些自定义 hook 使用 `useQueryClient()` hook 获取 `QueryClient` 对象并调用其方法。
+
+为确保引用同一个 `QueryClient` 对象，请在项目根部包裹 `<Provider>` 并使用与传递给 `QueryClientProvider` 相同的 `queryClient` 值初始化 `queryClientAtom`。
+
+如果没有这一步，`useQueryAtom` 将引用与使用 `useQueryClient()` hook 获取 queryClient 的 hook 不同的 `QueryClient`。
+
+另外，你也可以通过 `getQueryClient` 参数指定你的 `queryClient`。
+
+#### 示例
+
+在下面的示例中，我们有一个 mutation hook `useTodoMutation` 和一个查询 `todosAtom`。
+
+我们在根节点 `<App>` 中包含了初始化步骤。
+
+虽然它们引用相同的查询键（`'todos'`），但如果**没有完成 `Provider` 初始化步骤**，`useTodoMutation` 中 `onSuccess` 的失效操作将不会触发。
+
+这将导致 `todosAtom` 显示过期数据，因为它没有被提示重新获取。
+
+注意：使用 **Typescript** 时，建议在将 queryClient 值传递给 useHydrateAtoms 时使用 Map。你可以在[渲染时初始化状态文档](https://jotai.org/docs/guides/initialize-atom-on-render#using-typescript)中找到可用的示例。
+
+```jsx
+import { Provider } from 'jotai/react'
+import { useHydrateAtoms } from 'jotai/react/utils'
+import {
+  useMutation,
+  useQueryClient,
+  QueryClient,
+  QueryClientProvider,
+} from '@tanstack/react-query'
+import { atomWithQuery, queryClientAtom } from 'jotai-tanstack-query'
+
+const queryClient = new QueryClient()
+
+const HydrateAtoms = ({ children }) => {
+  useHydrateAtoms([[queryClientAtom, queryClient]])
+  return children
+}
+
+export const App = () => {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <Provider>
+        {/*
+   This Provider initialisation step is needed so that we reference the same
+   queryClient in both atomWithQuery and other parts of the app. Without this,
+   our useQueryClient() hook will return a different QueryClient object
+	*/}
+        <HydrateAtoms>
+          <App />
+        </HydrateAtoms>
+      </Provider>
+    </QueryClientProvider>
+  )
+}
+
+export const todosAtom = atomWithQuery((get) => {
+  return {
+    queryKey: ['todos'],
+    queryFn: () => fetch('/todos'),
+  }
+})
+
+export const useTodoMutation = () => {
+  const queryClient = useQueryClient()
+
+  return useMutation(
+    async (body: todo) => {
+      await fetch('/todo', { Method: 'POST', Body: body })
+    },
+    {
+      onSuccess: () => {
+        void queryClient.invalidateQueries(['todos'])
+      },
+      onError,
+    }
+  )
+}
+```
+
+### 服务端渲染（SSR）支持
+
+所有原子都可以在服务端渲染应用的上下文中使用，例如 Next.js 或 Gatsby 应用。你可以使用 React Query 为 SSR 应用支持的[两种方式](https://tanstack.com/query/v5/docs/framework/react/guides/ssr)：[水合](https://tanstack.com/query/v5/docs/react/guides/ssr#using-the-hydration-apis)或 [`initialData`](https://tanstack.com/query/v5/docs/react/guides/ssr#get-started-fast-with-initialdata)。
+
+### 错误处理
+
+获取错误将被抛出，可以通过 ErrorBoundary 捕获。
+重新获取可能可以从临时错误中恢复。
+
+查看[可运行的示例](https://codesandbox.io/s/4gfp6z)了解更多。
+
+### 开发者工具
+
+要使用开发者工具，你需要额外安装。
+
+```bash
+npm install @tanstack/react-query-devtools
+```
+
+你只需在 `<QueryClientProvider />` 内放置 `<ReactQueryDevtools />`。
+
+```tsx
+import {
+  QueryClientProvider,
+  QueryClient,
+  QueryCache,
+} from '@tanstack/react-query'
+import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
+import { queryClientAtom } from 'jotai-tanstack-query'
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: Infinity,
+    },
+  },
+})
+
+const HydrateAtoms = ({ children }) => {
+  useHydrateAtoms([[queryClientAtom, queryClient]])
+  return children
+}
+
+export const App = () => {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <Provider>
+        <HydrateAtoms>
+          <App />
+        </HydrateAtoms>
+      </Provider>
+      <ReactQueryDevtools />
+    </QueryClientProvider>
+  )
+}
+```
+
+## 迁移到 v0.8.0
+
+### 原子签名变更
+
+所有原子签名已更改，以与 TanStack Query 更加一致。
+v0.8.0 只返回单个原子，而不是原子元组，因此名称从 `atomsWithSomething` 改为 `atomWithSomething`。
+
+```diff
+
+- const [dataAtom, statusAtom] = atomsWithSomething(getOptions, getQueryClient)
++ const dataAtom = atomWithSomething(getOptions, getQueryClient)
+
+```
+
+### 简化的返回结构
+
+在之前版本的 `jotai-tanstack-query` 中，查询原子 `atomsWithQuery` 和 `atomsWithInfiniteQuery` 返回一个原子元组：`[dataAtom, statusAtom]`。这种设计将数据和状态分成了两个不同的原子。
+
+#### atomWithQuery 和 atomWithInfiniteQuery
+
+- `dataAtom` 用于访问实际数据（`TData`）。
+- `statusAtom` 提供状态对象（`QueryObserverResult<TData, TError>`），包括 `isPending`、`isError` 等附加属性。
+
+在 v0.8.0 中，它们被替换为 `atomWithQuery` 和 `atomWithInfiniteQuery`，只返回单个 `dataAtom`。这个 `dataAtom` 现在直接提供 `QueryObserverResult<TData, TError>`，与 TanStack Query 绑定的行为紧密对齐。
+
+要迁移到新版本，请将单独的 `dataAtom` 和 `statusAtom` 用法替换为统一的 `dataAtom`，它现在同时包含数据和状态信息。
+
+```diff
+- const [dataAtom, statusAtom] = atomsWithQuery(/* ... */);
+- const [data] = useAtom(dataAtom);
+- const [status] = useAtom(statusAtom);
+
++ const dataAtom = atomWithQuery(/* ... */);
++ const [{ data, isPending, isError }] = useAtom(dataAtom);
+```
+
+#### atomWithMutation
+
+与 `atomsWithQuery` 和 `atomsWithInfiniteQuery` 类似，`atomWithMutation` 也返回单个原子而不是原子元组。原子值的返回类型为 `MutationObserverResult<TData, TError, TVariables, TContext>`。
+
+```diff
+
+- const [, postAtom] = atomsWithMutation(/* ... */);
+- const [post, mutate] = useAtom(postAtom); // Accessing mutation status from post; and mutate() to execute the mutation
+
++ const postAtom = atomWithMutation(/* ... */);
++ const [{ data, error, mutate }] = useAtom(postAtom); // Accessing mutation result and mutate method from the same atom
+
+```
+
+### 示例
+
+#### 基础演示
+
+[Open in StackBlitz](https://stackblitz.com/edit/vitejs-vite-pr9eaf?file=src%2FApp.tsx)
+
+#### 开发者工具演示
+
+[Open in StackBlitz](https://stackblitz.com/edit/vitejs-vite-btdqkh?file=src%2FApp.tsx)
+
+#### Hackernews
+
+[Open in StackBlitz](https://stackblitz.com/edit/vitejs-vite-wqsyj8?file=src%2FApp.tsx)

@@ -1,0 +1,102 @@
+---
+title: atomWithDebounce
+nav: 9.10
+keywords: creators,debounce
+---
+
+{/*
+translation-source-path: recipes/atom-with-debounce.mdx
+translation-source-ref: v2.18.0
+translation-source-hash: 8f581aff1695fc748e3046d3d821a6ab191232b69b3cd5a326c1ea14ec97de81
+translation-status: translated
+*/}
+
+
+> `atomWithDebounce` 用于创建一个状态设置带有防抖功能的原子。
+
+这个工具适用于文本搜索输入场景。在这种场景下，你希望**派生原子中的函数仅在等待一段时间后执行一次**，而不是在每次按键时都触发操作。
+
+```tsx
+import { atom, SetStateAction } from 'jotai'
+
+export default function atomWithDebounce<T>(
+  initialValue: T,
+  delayMilliseconds = 500,
+  shouldDebounceOnReset = false,
+) {
+  const prevTimeoutAtom = atom<ReturnType<typeof setTimeout> | undefined>(
+    undefined,
+  )
+
+  // DO NOT EXPORT currentValueAtom as using this atom to set state can cause
+  // inconsistent state between currentValueAtom and debouncedValueAtom
+  const _currentValueAtom = atom(initialValue)
+  const isDebouncingAtom = atom(false)
+
+  const debouncedValueAtom = atom(
+    initialValue,
+    (get, set, update: SetStateAction<T>) => {
+      clearTimeout(get(prevTimeoutAtom))
+
+      const prevValue = get(_currentValueAtom)
+      const nextValue =
+        typeof update === 'function'
+          ? (update as (prev: T) => T)(prevValue)
+          : update
+
+      const onDebounceStart = () => {
+        set(_currentValueAtom, nextValue)
+        set(isDebouncingAtom, true)
+      }
+
+      const onDebounceEnd = () => {
+        set(debouncedValueAtom, nextValue)
+        set(isDebouncingAtom, false)
+      }
+
+      onDebounceStart()
+
+      if (!shouldDebounceOnReset && nextValue === initialValue) {
+        onDebounceEnd()
+        return
+      }
+
+      const nextTimeoutId = setTimeout(() => {
+        onDebounceEnd()
+      }, delayMilliseconds)
+
+      // set previous timeout atom in case it needs to get cleared
+      set(prevTimeoutAtom, nextTimeoutId)
+    },
+  )
+
+  // exported atom setter to clear timeout if needed
+  const clearTimeoutAtom = atom(null, (get, set, _arg) => {
+    clearTimeout(get(prevTimeoutAtom))
+    set(isDebouncingAtom, false)
+  })
+
+  return {
+    currentValueAtom: atom((get) => get(_currentValueAtom)),
+    isDebouncingAtom,
+    clearTimeoutAtom,
+    debouncedValueAtom,
+  }
+}
+```
+
+### 注意事项
+
+请注意，这个原子与 React 18 的并发特性（如 `useTransition` 和 `useDeferredValue`）目标不同。后者的主要目的是防止高开销更新阻塞页面交互。
+
+更多信息请参阅此 GitHub 讨论 https://github.com/reactwg/react-18/discussions/41 中 **"How is it different from setTimeout?"** 一节。
+
+### 用法示例
+
+下方的沙盒链接展示了如何使用派生原子基于 `debouncedValueAtom` 的值来获取状态。
+
+在 `<SearchInput>` 中输入宝可梦名称时，我们不会在每个字母输入时都发送请求，而是在最后一次输入后等待 `delayMilliseconds` 毫秒才发送。
+
+这减少了向服务器发送的后端请求数量。
+
+[在 StackBlitz 中打开](https://stackblitz.com/edit/vitejs-vite-chvvtu?file=src%2FApp.tsx)

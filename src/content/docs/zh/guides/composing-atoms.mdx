@@ -1,0 +1,203 @@
+---
+title: Composing atoms
+nav: 8.11
+---
+
+{/*
+translation-source-path: guides/composing-atoms.mdx
+translation-source-ref: v2.18.0
+translation-source-hash: af12e6585c137111e355f03c828573b5dc56347b33eba1f95d0038db8e2061bb
+translation-status: translated
+*/}
+
+
+库提供的 `atom` 函数非常原始，但也非常灵活，你可以组合多个原子来实现各种功能。
+
+> 再次提醒，`atom()` 创建的是一个原子配置，它是一个用于定义原子行为的对象。
+
+让我们回顾一下如何派生原子。
+
+### 基本的派生原子
+
+以下是最简单的派生原子示例：
+
+```js
+export const textAtom = atom('hello')
+export const textLenAtom = atom((get) => get(textAtom).length)
+```
+
+`textLenAtom` 被称为只读原子，因为它没有定义 `write` 函数。
+
+下面是另一个带有 `write` 函数的简单示例：
+
+```js
+const textAtom = atom('hello')
+export const textUpperCaseAtom = atom(
+  (get) => get(textAtom).toUpperCase(),
+  (_get, set, newText) => set(textAtom, newText),
+)
+```
+
+在这个例子中，`textUpperCaseAtom` 能够设置原始的 `textAtom`。
+因此，我们可以只导出 `textUpperCaseAtom`，将 `textAtom` 隐藏在更小的作用域中。
+
+现在来看一些实际的例子。
+
+### 覆盖原子的默认值
+
+假设我们有一个只读原子。
+显然只读原子不可写，但我们可以组合两个原子来覆盖只读原子的值。
+
+```js
+const rawNumberAtom = atom(10.1) // can be exported
+const roundNumberAtom = atom((get) => Math.round(get(rawNumberAtom)))
+const overwrittenAtom = atom(null)
+export const numberAtom = atom(
+  (get) => get(overwrittenAtom) ?? get(roundNumberAtom),
+  (get, set, newValue) => {
+    const nextValue =
+      typeof newValue === 'function' ? newValue(get(numberAtom)) : newValue
+    set(overwrittenAtom, nextValue)
+  },
+)
+```
+
+最终的 `numberAtom` 就像一个普通的原始原子（如 `atom(10)`）一样工作。
+如果你设置一个数字值，它会覆盖 `overwrittenAtom` 的值；如果你设置 `null`，则会使用 `roundNumberAtom` 的值。
+
+这个可复用的实现已在 `jotai/utils` 中以 `atomWithDefault` 的形式提供。参见 [atomWithDefault](../utilities/resettable.mdx)。
+
+接下来，看另一个与外部值同步的例子。
+
+### 将原子值与外部值同步
+
+有些外部值我们需要与原子同步。
+`localStorage` 就是其中之一，另一个例子是 `window.title`。
+
+让我们看看如何创建一个与 `localStorage` 保持同步的原子。
+
+```js
+const baseAtom = atom(localStorage.getItem('mykey') || '')
+export const persistedAtom = atom(
+  (get) => get(baseAtom),
+  (get, set, newValue) => {
+    const nextValue =
+      typeof newValue === 'function' ? newValue(get(baseAtom)) : newValue
+    set(baseAtom, nextValue)
+    localStorage.setItem('mykey', nextValue)
+  },
+)
+```
+
+`persistedAtom` 的行为与原始原子一样，但它的值会被持久化到 `localStorage` 中。
+
+这个可复用的实现已在 `jotai/utils` 中以 `atomWithStorage` 的形式提供。参见 [atomWithStorage](../utilities/storage.mdx)。
+
+这种用法有一个注意事项。虽然原子配置本身不持有值，但外部值是单例的。
+因此，如果我们在两个不同的 Provider 中使用这个原子，两个 `persistedAtom` 的值之间会出现不一致。
+这个问题可以通过外部值提供订阅机制来解决。
+
+例如，`jotai-valtio` 中的 `atomWithProxy` 自带订阅功能，因此没有这个限制。不同 Provider 中的值会保持同步。
+
+回到主题，让我们继续探索另一个例子。
+
+### 使用 `atomWith*` 工具函数扩展原子
+
+我们有几个以 `atomWith` 开头的工具函数。
+它们可以创建具有特定功能的原子。
+遗憾的是，我们不能组合两个原子工具函数。
+例如，`atomWithStorage` 和 `atomWithReducer` 不能用来定义同一个原子。
+
+在这种情况下，我们需要自己派生原子。
+让我们尝试给 `atomWithStorage` 添加 reducer 功能：
+
+```js
+const reducer = ...
+const baseAtom = atomWithStorage('mykey', '')
+export const derivedAtom = atom(
+  (get) => get(baseAtom),
+  (get, set, action) => {
+    set(baseAtom, reducer(get(baseAtom), action))
+  }
+)
+```
+
+这很简单，因为在这个场景中，`atomWithReducer` 相比 `atomWithStorage` 是一个更简单的实现。
+
+对于更复杂的情况，就不会那么容易了。
+这仍然是一个开放的研究领域。
+
+最后，来看一个使用 action 的例子。
+
+### Action 原子
+
+这应该是一个大家熟知的模式，因为 README 中已经有描述。
+不过，重新回顾一下可能还是有用的。
+
+让我们创建一个只能加一或减一的计数器。
+
+一种方案是使用 `atomWithReducer`：
+
+```js
+const countAtom = atomWithReducer(0, (prev, action) => {
+  if (action === 'INC') {
+    return prev + 1
+  }
+  if (action === 'DEC') {
+    return prev - 1
+  }
+  throw new Error('unknown action')
+})
+```
+
+这没问题，但不够"原子化"。
+如果我们想从代码分割/懒加载中获益，就需要创建只写原子，即 action 原子。
+
+```js
+const baseAtom = atom(0) // do not export
+export const countAtom = atom((get) => get(baseAtom)) // read only
+export const incAtom = atom(null, (_get, set) => {
+  set(baseAtom, (prev) => prev + 1)
+})
+export const decAtom = atom(null, (_get, set) => {
+  set(baseAtom, (prev) => prev - 1)
+})
+```
+
+这更加"原子化"，也更符合 Jotai 的风格。
+
+你还可以创建一个调用其他 action 原子的 action 原子：
+
+```js
+// continued from the previous code
+export const dispatchAtom = atom(null, (_get, set, action) => {
+  if (action === 'INC') {
+    set(incAtom)
+  } else if (action === 'DEC') {
+    set(decAtom)
+  } else {
+    throw new Error('unknown action')
+  }
+})
+```
+
+为什么要这样做？因为它只在需要时才会被使用。
+这使得代码分割和死代码消除成为可能。
+
+### 总结
+
+原子是构建模块。
+通过基于其他原子组合原子，我们可以实现复杂的逻辑。
+这不仅适用于读取派生原子，也适用于写入 action 原子。
+
+本质上，原子就像函数，组合原子就像用函数组合函数。
+
+**注意**：我们提到过原子可以包含任何类型的数据——字符串、Blob、Observer 等等。但有一个例外：因为派生原子是通过函数定义的，如果你传入一个不是纯 getter 的函数，Jotai 将无法正确理解。
+解决方法很简单：将你的函数包装在一个对象中。
+
+```js
+const doublerAtom = atom({ callback: (n) => n * 2 })
+// Usage
+const [doubler] = useAtom(doublerAtom)
+const doubledValue = doubler.callback(50) // Will compute to 100
+```

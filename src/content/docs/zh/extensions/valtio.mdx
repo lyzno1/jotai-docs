@@ -1,0 +1,129 @@
+---
+title: Valtio
+description: This doc describes Valtio extension.
+nav: 4.98
+keywords: valtio,proxy
+published: false
+---
+
+{/*
+translation-source-path: extensions/valtio.mdx
+translation-source-ref: v2.18.0
+translation-source-hash: d8a4a4b61d08316e228accd75bc37d25b23ccc748d47e224ddbcadbcca318511
+translation-status: translated
+*/}
+
+
+Jotai 的状态存储在 React 中，但有时我们需要与 React 之外的世界进行交互。
+
+Valtio 提供了一个代理接口，可用于存储一些值并与 Jotai 中的原子同步。
+
+此扩展仅使用 Valtio 的 vanilla API。
+
+### 安装
+
+你需要安装 `valtio` 和 `jotai-valtio` 来使用此功能。
+
+```
+npm install valtio jotai-valtio
+```
+
+## atomWithProxy
+
+`atomWithProxy` 使用 Valtio 代理创建一个新的原子。它是双向绑定的，你可以从两端修改值。
+
+```jsx
+import { useAtom } from 'jotai'
+import { atomWithProxy } from 'jotai-valtio'
+import { proxy } from 'valtio/vanilla'
+
+const proxyState = proxy({ count: 0 })
+const stateAtom = atomWithProxy(proxyState)
+const Counter = () => {
+  const [state, setState] = useAtom(stateAtom)
+
+  return (
+    <>
+      count: {state.count}
+      <button
+        onClick={() => setState((prev) => ({ ...prev, count: prev.count + 1 }))}
+      >
+        inc atom
+      </button>
+      <button
+        onClick={() => {
+          ++proxyState.count
+        }}
+      >
+        inc proxy
+      </button>
+    </>
+  )
+}
+```
+
+### 参数
+
+```
+atomWithProxy(proxyObject, options?)
+```
+
+**proxyObject**（必需）：你想要从中派生原子的 Valtio 代理对象。
+
+**options.sync**（可选）：使原子同步更新，而不是等待批量更新，类似于 [`valtio/useSnapshot`](https://github.com/pmndrs/valtio#update-synchronously)。这会导致更多的重渲染，但能更好地保证与其他 Jotai 原子的同步。
+
+```
+atomWithProxy(proxyObject, { sync: true })
+```
+
+### 示例
+
+[在 StackBlitz 中打开](https://stackblitz.com/edit/vitejs-vite-wmsazx?file=src%2FApp.tsx)
+
+## mutableAtom
+
+`mutableAtom` 将一个值包装在一个自感知的 Valtio 代理中。你可以像操作普通 JavaScript 对象一样对其进行修改。
+
+计数值存储在 `value` 属性下。
+
+```jsx
+const countProxyAtom = mutableAtom(0)
+
+function IncrementButton() {
+  const countProxy = useAtomValue(countProxyAtom)
+  return <button onClick={() => ++countProxy.value}>+</button>
+}
+```
+
+### 参数
+
+```js
+mutableAtom(value, options?)
+```
+
+**value**（必需）：要代理的值。
+
+**options.proxyFn**（可选）：允许通过 `proxyFn` 自定义代理函数。可以是 `proxy`（默认）或自定义函数。
+
+### 示例
+
+[在 StackBlitz 中打开](https://stackblitz.com/edit/vitejs-vite-wmsazx?file=src%2FApp.tsx)
+
+### 修改代理时的注意事项
+
+注意不要在原子的读取函数或渲染过程中直接修改代理。这样做可能会导致无限渲染循环。
+
+```ts
+const countProxyAtom = mutableAtom(0)
+
+atom(
+  (get) => {
+    const countProxy = get(countProxyAtom)
+    ++countProxy.value // This will cause an infinite loop
+  },
+  (get, set) => {
+    const countProxy = get(countProxyAtom)
+    ++countProxy.value // This is fine
+  },
+)
+```

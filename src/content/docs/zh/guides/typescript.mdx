@@ -1,0 +1,125 @@
+---
+title: TypeScript
+description: How to use Jotai with TypeScript
+nav: 8.02
+keywords: typescript,types
+---
+
+{/*
+translation-source-path: guides/typescript.mdx
+translation-source-ref: v2.18.0
+translation-source-hash: 9d33703b0c652cfa0b3439fa3f5c133a813b027ac2f124dbbbd1fb01401603ee
+translation-status: translated
+*/}
+
+
+### 版本要求
+
+Jotai 使用 TypeScript 3.8+ 语法。如果你的 TypeScript 版本在 3.7.5 或更低，请升级。
+
+Jotai 大量依赖类型推断，并且要求启用 `strictNullChecks`。建议在 tsconfig.json 中添加 `"strict": true`。
+[#550](https://github.com/pmndrs/jotai/issues/550)
+[#802](https://github.com/pmndrs/jotai/issues/802)
+[#838](https://github.com/pmndrs/jotai/issues/838)
+
+### 说明
+
+#### 原始原子基本上是类型推断的
+
+```ts
+const numAtom = atom(0) // primitive number atom
+const strAtom = atom('') // primitive string atom
+```
+
+### 原始原子可以显式指定类型
+
+```ts
+const numAtom = atom<number>(0)
+const numAtom = atom<number | null>(0)
+const arrAtom = atom<string[]>([])
+```
+
+#### 派生原子的类型通常可以自动推断
+
+一般来说，推荐使用类型推断的方式，因为显式标注派生原子的类型可能会有些令人困惑，尤其是对于初次接触的开发者。
+
+```ts
+
+# 只读派生原子
+const readOnlyAtom = atom((get) => get(numAtom))
+const asyncReadOnlyAtom = atom(async (get) => await get(someAsyncAtom))
+
+# 只写原子
+const writeOnlyAtom = atom(null, (_get, set, str: string) => set(fooAtom, str))
+const multipleArgumentsAtom = atom(
+  null,
+  (_get, set, valueOne: number, valueTwo: number) =>
+    set(fooAtom, Math.max(valueOne, valueTwo))
+);
+
+# 读写原子
+const readWriteAtom = atom(
+  (get) => get(strAtom),
+  (_get, set, num: number) => set(strAtom, String(num))
+)
+const asyncReadWriteAtom = atom(
+  async (get) => await get(asyncStrAtom),
+  (_get, set, num: number) => set(strAtom, String(num))
+)
+```
+
+#### 派生原子也可以显式指定类型
+
+如果你遇到需要或想要显式标注派生原子类型的情况，也是可以的。
+
+```ts
+const asyncStrAtom = atom<Promise<string>>(async () => 'foo')
+
+/**
+ * 对于只写原子，你需要提供三个类型参数。
+ * 第一个类型参数描述原子返回的值。在下面的示例中是 `null`。
+ * 第二个类型参数描述你传递给"写入函数"的参数（复数形式）。即使你只计划传一个参数，
+ * 这个类型也必须是数组，如示例所示。
+ * 第三个类型参数描述"写入函数"的返回值。通常没有返回值，
+ * 因此在下面的示例中我们使用 `void`。
+ */
+const writeOnlyAtom = atom<null, [string, number], void>(
+  null,
+  (_get, set, stringValue, numberValue) => set(fooAtom, stringValue),
+)
+
+/**
+ * 读写原子同样接受三个类型参数。
+ * 为了完整起见，在这个示例中我们展示第一个类型参数
+ * 也可以描述异步原子。
+ */
+const readWriteAtom = atom<Promise<string>, [number], void>(
+  async (get) => await get(asyncStrAtom),
+  (_get, set, num) => set(strAtom, String(num)),
+)
+```
+
+#### useAtom 的类型基于原子类型推断
+
+```ts
+const [num, setNum] = useAtom(primitiveNumAtom)
+const [num] = useAtom(readOnlyNumAtom)
+const [, setNum] = useAtom(writeOnlyNumAtom)
+```
+
+#### 获取原子的值类型
+
+```ts
+import { ExtractAtomValue, useAtomValue } from 'jotai'
+import { userAtom } from 'state'
+import { useQuery } from '@tanstack/react-query'
+
+export default function WriteReview(hid) {
+  const user = useAtomValue(userAtom)
+  const res = useGetReviewQuery(user)
+}
+
+function useGetReviewQuery(user: ExtractAtomValue<typeof userAtom>) {
+  return fetch('/api/user/' + user.id + '/review')
+}
+```

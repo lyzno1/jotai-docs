@@ -1,0 +1,220 @@
+---
+title: Core internals
+description: A simplified version of the core implementation
+nav: 8.10
+---
+
+{/*
+translation-source-path: guides/core-internals.mdx
+translation-source-ref: v2.18.0
+translation-source-hash: d597bfdbfbcf0c4ee92a1b7713e40ec7c713079f63a40c52d322132e0de7de1d
+translation-status: translated
+*/}
+
+
+本指南适合想要了解 Jotai 核心实现的读者。它并非完整的核心实现示例，而是一个简化版本。灵感来自 Daishi Kato([@dai_shi](https://twitter.com/dai_shi)) 的一系列推文。
+
+### 第一版
+
+让我们从一个简单的例子开始。原子本质上是一个返回配置对象的函数。我们使用 WeakMap 将原子映射到它们的状态。
+WeakMap 不会将键保留在内存中，所以如果原子被垃圾回收，它的状态也会被垃圾回收。这有助于避免内存泄漏。
+
+```js
+import { useState, useEffect } from 'react'
+
+// atom function returns a config object which contains initial value
+export const atom = (initialValue) => ({ init: initialValue })
+
+// we need to keep track of the state of the atom.
+// we are using weakmap to avoid memory leaks
+const atomStateMap = new WeakMap()
+const getAtomState = (atom) => {
+  let atomState = atomStateMap.get(atom)
+  if (!atomState) {
+    atomState = { value: atom.init, listeners: new Set() }
+    atomStateMap.set(atom, atomState)
+  }
+  return atomState
+}
+
+// useAtom hook returns a tuple of the current value
+// and a function to update the atom's value
+export const useAtom = (atom) => {
+  const atomState = getAtomState(atom)
+  const [value, setValue] = useState(atomState.value)
+  useEffect(() => {
+    const callback = () => setValue(atomState.value)
+
+    // same atom can be used at multiple components, so we need to
+    // keep listening for atom's state change till component is unmounted.
+    atomState.listeners.add(callback)
+    callback()
+    return () => atomState.listeners.delete(callback)
+  }, [atomState])
+
+  const setAtom = (nextValue) => {
+    atomState.value = nextValue
+
+    // let all the subscribed components know that the atom's state has changed
+    atomState.listeners.forEach((l) => l())
+  }
+
+  return [value, setAtom]
+}
+```
+
+这里有一个使用我们简化版原子实现的示例。[Counter 示例](https://codesandbox.io/s/zealous-field-z2xk6?file=/src/App.js)
+
+参考推文：[揭秘 jotai 的内部实现](https://twitter.com/dai_shi/status/1484835169475653634)
+
+### 第二版
+
+等一下！我们可以做得更好。在 Jotai 中，我们可以创建派生原子。派生原子是依赖于其他原子的原子。
+
+```js
+const priceAtom = atom(10)
+const readOnlyAtom = atom((get) => get(priceAtom) * 2)
+const writeOnlyAtom = atom(
+  null, // it's a convention to pass `null` for the first argument
+  (get, set, args) => {
+    set(priceAtom, get(priceAtom) - args)
+  },
+)
+const readWriteAtom = atom(
+  (get) => get(priceAtom) * 2,
+  (get, set, newPrice) => {
+    set(priceAtom, newPrice / 2)
+    // you can set as many atoms as you want at the same time
+  },
+)
+```
+
+为了追踪所有的依赖者，我们需要在原子状态中添加一个新属性。假设原子 X 依赖于原子 Y，
+那么当我们更新原子 Y 时，也需要更新原子 X。这就是依赖追踪。
+
+```js
+const atomState = {
+  value: atom.init,
+  listeners: new Set(),
+  dependents: new Set(),
+}
+```
+
+现在我们需要创建读取和写入原子的函数，这些函数能够处理依赖原子的状态更新。
+
+```js
+import { useState, useEffect } from 'react'
+
+export const atom = (read, write) => {
+  if (typeof read === 'function') {
+    return { read, write }
+  }
+  const config = {
+    init: read,
+
+    // get in the read function is to read the atom value.
+    // It's reactive and read dependencies are tracked.
+    read: (get) => get(config),
+
+    // get in the write function is also to read atom value, but it's not tracked.
+    // set in the write function is to write atom value and
+    // it will invoke the write function of the target atom.
+    write:
+      write ||
+      ((get, set, arg) => {
+        if (typeof arg === 'function') {
+          set(config, arg(get(config)))
+        } else {
+          set(config, arg)
+        }
+      }),
+  }
+  return config
+}
+
+// same as above but the state has one extra property: dependents
+const atomStateMap = new WeakMap()
+const getAtomState = (atom) => {
+  let atomState = atomStateMap.get(atom)
+  if (!atomState) {
+    atomState = {
+      value: atom.init,
+      listeners: new Set(),
+      dependents: new Set(),
+    }
+    atomStateMap.set(atom, atomState)
+  }
+  return atomState
+}
+
+// If atom is primitive, we return it's value.
+// If atom is derived, we read the parent atom's value
+// and add current atom to parent's the dependent set (recursively).
+const readAtom = (atom) => {
+  const atomState = getAtomState(atom)
+  const get = (a) => {
+    if (a === atom) {
+      return atomState.value
+    }
+    const aState = getAtomState(a)
+    aState.dependents.add(atom) // XXX add only
+    return readAtom(a) // XXX no caching
+  }
+  const value = atom.read(get)
+  atomState.value = value
+  return value
+}
+
+// if atomState is modified, we need to notify all the dependent atoms (recursively)
+// now run callbacks for all the components that are dependent on this atom
+const notify = (atom) => {
+  const atomState = getAtomState(atom)
+  atomState.dependents.forEach((d) => {
+    if (d !== atom) notify(d)
+  })
+  atomState.listeners.forEach((l) => l())
+}
+
+// writeAtom calls atom.write with the necessary params and triggers notify function
+const writeAtom = (atom, value) => {
+  const atomState = getAtomState(atom)
+
+  // 'a' is some atom from atomStateMap
+  const get = (a) => {
+    const aState = getAtomState(a)
+    return aState.value
+  }
+
+  // if 'a' is the same as atom, update the value, notify that atom and return
+  // else calls writeAtom for 'a' (recursively)
+  const set = (a, v) => {
+    if (a === atom) {
+      atomState.value = v
+      notify(atom)
+      return
+    }
+    writeAtom(a, v)
+  }
+
+  atom.write(get, set, value)
+}
+
+export const useAtom = (atom) => {
+  const [value, setValue] = useState()
+  useEffect(() => {
+    const callback = () => setValue(readAtom(atom))
+    const atomState = getAtomState(atom)
+    atomState.listeners.add(callback)
+    callback()
+    return () => atomState.listeners.delete(callback)
+  }, [atom])
+  const setAtom = (nextValue) => {
+    writeAtom(atom, nextValue)
+  }
+  return [value, setAtom]
+}
+```
+
+这里有一个使用我们派生原子实现的示例。[派生计数器示例](https://codesandbox.io/s/affectionate-chandrasekhar-nuxms?file=/src/App.js)
+
+参考推文：[支持派生原子](https://twitter.com/dai_shi/status/1485434083778117632)

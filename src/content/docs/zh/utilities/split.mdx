@@ -1,0 +1,132 @@
+---
+title: Split
+nav: 3.99
+keywords: select
+published: false
+---
+
+{/*
+translation-source-path: utilities/split.mdx
+translation-source-ref: v2.18.0
+translation-source-hash: efc537725eeecdeb8f6da7f0dbb171865da1aa5cbdf26f3b567edb8bb492d5a8
+translation-status: translated
+*/}
+
+
+## splitAtom
+
+`splitAtom` 工具函数适用于需要为列表中的每个元素获取独立原子的场景。它接受一个包含列表的读/写原子，返回一个原子，该原子持有一个原子列表，每个原子对应原始列表中的一个元素。
+
+### 签名
+
+`splitAtom` 的简化类型签名如下：
+
+```ts
+type SplitAtom = <Item, Key>(
+  arrayAtom: PrimitiveAtom<Array<Item>>,
+  keyExtractor?: (item: Item) => Key
+): Atom<Array<PrimitiveAtom<Item>>>
+```
+
+### 主要特性
+
+1. 返回的原子在写方向上包含一个 dispatch 函数（自 v1.6.4 起），提供了一种简单的方式来修改原始原子，支持 `remove`、`insert` 和 `move` 等操作。
+
+2. 可以提供可选的 `keyExtractor` 函数作为第二个参数，以增强稳定性和性能。
+
+### Key Extractor
+
+`splitAtom` 工具函数支持第二个参数，即 key 提取器函数：
+
+```ts
+export function splitAtom<Item, Key>(
+  arrAtom: WritableAtom<Item[], [Item[]], void> | Atom<Item[]>,
+  keyExtractor?: (item: Item) => Key,
+)
+```
+
+`keyExtractor` 的重要注意事项：
+
+- 如果 `splitAtom` 在 React 渲染循环中使用，`keyExtractor` 必须是保持对象相等性（浅相等）的稳定函数。此要求不适用于渲染循环之外。
+- 提供 `keyExtractor` 可以增强原子输出的稳定性（使记忆化更频繁地命中缓存）。它可以防止由于源数组中的索引移动导致的子原子不必要重建。
+- `keyExtractor` 是可选的优化手段，仅在提取的 key 保证对数组中的每个元素唯一时才应使用。
+
+### 使用示例
+
+以下是 `splitAtom` 的使用示例：
+
+[在 StackBlitz 中打开](https://stackblitz.com/edit/vitejs-vite-oavdw2?file=src%2FApp.tsx)
+
+```tsx
+import { Provider, atom, useAtom, PrimitiveAtom } from 'jotai'
+import { splitAtom } from 'jotai/utils'
+import './styles.css'
+
+const initialState = [
+  {
+    task: 'help the town',
+    done: false,
+  },
+  {
+    task: 'feed the dragon',
+    done: false,
+  },
+]
+
+const todosAtom = atom(initialState)
+const todoAtomsAtom = splitAtom(todosAtom)
+
+type TodoType = (typeof initialState)[number]
+
+const TodoItem = ({
+  todoAtom,
+  remove,
+}: {
+  todoAtom: PrimitiveAtom<TodoType>
+  remove: () => void
+}) => {
+  const [todo, setTodo] = useAtom(todoAtom)
+  return (
+    <div>
+      <input
+        value={todo.task}
+        onChange={(e) => {
+          setTodo((oldValue) => ({ ...oldValue, task: e.target.value }))
+        }}
+      />
+      <input
+        type="checkbox"
+        checked={todo.done}
+        onChange={() => {
+          setTodo((oldValue) => ({ ...oldValue, done: !oldValue.done }))
+        }}
+      />
+      <button onClick={remove}>remove</button>
+    </div>
+  )
+}
+
+const TodoList = () => {
+  const [todoAtoms, dispatch] = useAtom(todoAtomsAtom)
+  return (
+    <ul>
+      {todoAtoms.map((todoAtom) => (
+        <TodoItem
+          todoAtom={todoAtom}
+          remove={() => dispatch({ type: 'remove', atom: todoAtom })}
+        />
+      ))}
+    </ul>
+  )
+}
+
+const App = () => (
+  <Provider>
+    <TodoList />
+  </Provider>
+)
+
+export default App
+```
+
+此示例演示了如何使用 `splitAtom` 管理待办事项列表，允许对每个条目进行独立操作，同时维护整体的列表原子。

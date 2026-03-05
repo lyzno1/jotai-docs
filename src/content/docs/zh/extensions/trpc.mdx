@@ -1,0 +1,105 @@
+---
+title: tRPC
+description: This doc describes tRPC extension.
+nav: 4.01
+keywords: rpc,trpc,typescript,t3
+---
+
+{/*
+translation-source-path: extensions/trpc.mdx
+translation-source-ref: v2.18.0
+translation-source-hash: 35b5a8f675608719e7d9ec3ce24af76c7446bd94b0f0044ad1b328c2b246d693
+translation-status: translated
+*/}
+
+
+你可以将 Jotai 与 [tRPC](https://trpc.io) 一起使用。
+
+### 安装
+
+你需要安装 `jotai-trpc`、`@trpc/client` 和 `@trpc/server` 来使用此扩展。
+
+```
+npm install jotai-trpc @trpc/client @trpc/server
+```
+
+### 用法
+
+```ts
+import { createTRPCJotai } from 'jotai-trpc'
+
+const trpc = createTRPCJotai<MyRouter>({
+  links: [
+    httpLink({
+      url: myUrl,
+    }),
+  ],
+})
+
+const idAtom = atom('foo')
+const queryAtom = trpc.bar.baz.atomWithQuery((get) => get(idAtom))
+```
+
+### atomWithQuery
+
+`...atomWithQuery` 创建一个带有 "query" 的新原子。它内部使用 [Vanilla Client](https://trpc.io/docs/vanilla) 的 `...query` 过程。
+
+```tsx
+import { atom, useAtom } from 'jotai'
+import { httpLink } from '@trpc/client'
+import { createTRPCJotai } from 'jotai-trpc'
+import { trpcPokemonUrl } from 'trpc-pokemon'
+import type { PokemonRouter } from 'trpc-pokemon'
+
+const trpc = createTRPCJotai<PokemonRouter>({
+  links: [
+    httpLink({
+      url: trpcPokemonUrl,
+    }),
+  ],
+})
+
+const NAMES = [
+  'bulbasaur',
+  'ivysaur',
+  'venusaur',
+  'charmander',
+  'charmeleon',
+  'charizard',
+  'squirtle',
+  'wartortle',
+  'blastoise',
+]
+
+const nameAtom = atom(NAMES[0])
+
+const pokemonAtom = trpc.pokemon.byId.atomWithQuery((get) => get(nameAtom))
+
+const Pokemon = () => {
+  const [data, refresh] = useAtom(pokemonAtom)
+  return (
+    <div>
+      <div>ID: {data.id}</div>
+      <div>Height: {data.height}</div>
+      <div>Weight: {data.weight}</div>
+      <button onClick={refresh}>Refresh</button>
+    </div>
+  )
+}
+```
+
+#### 示例
+
+[在 StackBlitz 中打开](https://stackblitz.com/edit/vitejs-vite-8kgfpj?file=src%2FApp.tsx)
+
+### atomWithMutation
+
+`...atomWithMutation` 创建一个带有 "mutate" 的新原子。它内部使用 [Vanilla Client](https://trpc.io/docs/vanilla) 的 `...mutate` 过程。
+
+FIXME: add code example and codesandbox
+
+### atomWithSubscription
+
+`...atomWithSubscription` 创建一个带有 "subscribe" 的新原子。它内部使用 [Vanilla Client](https://trpc.io/docs/vanilla) 的 `...subscribe` 过程。
+
+FIXME: add code example and codesandbox

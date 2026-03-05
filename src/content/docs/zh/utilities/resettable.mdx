@@ -1,0 +1,210 @@
+---
+title: Resettable
+nav: 3.04
+keywords: reset,default
+---
+
+{/*
+translation-source-path: utilities/resettable.mdx
+translation-source-ref: v2.18.0
+translation-source-hash: 8637ddd9286e015d6fb60b764d3a10a87c4b0087fce15e1397394bd4ed71ada0
+translation-status: translated
+*/}
+
+
+## atomWithReset
+
+参考：https://github.com/pmndrs/jotai/issues/41
+
+```ts
+function atomWithReset<Value>(
+  initialValue: Value,
+): WritableAtom<Value, SetStateAction<Value> | typeof RESET>
+```
+
+创建一个可以通过 [`useResetAtom`](use-reset-atom.mdx) Hook 重置为 `initialValue` 的原子。
+它的工作方式与原始原子完全相同，但你还可以将其设置为特殊值
+[`RESET`](reset.mdx)。请参阅[可重置的原子](../utilities/resettable.mdx)中的示例。
+
+### 示例
+
+```js
+import { atomWithReset } from 'jotai/utils'
+
+const dollarsAtom = atomWithReset(0)
+const todoListAtom = atomWithReset([
+  { description: 'Add a todo', checked: false },
+])
+```
+
+## RESET
+
+参考：https://github.com/pmndrs/jotai/issues/217
+
+```ts
+const RESET: unique symbol
+```
+
+特殊值，可被使用 [`atomWithReset`](../utilities/resettable.mdx)、[`atomWithDefault`](../utilities/resettable.mdx) 创建的[可重置的原子](../utilities/resettable.mdx)接受，
+也可被接受 `RESET` symbol 的 `atom` 创建的可写原子接受。
+
+### 示例
+
+```jsx
+import { atom, useSetAtom } from 'jotai'
+import { atomWithReset, useResetAtom, RESET } from 'jotai/utils'
+
+const dollarsAtom = atomWithReset(0)
+const centsAtom = atom(
+  (get) => get(dollarsAtom) * 100,
+  (get, set, newValue: number | typeof RESET) =>
+    set(dollarsAtom, newValue === RESET ? newValue : newValue / 100)
+)
+
+const ResetExample = () => {
+  const setDollars = useSetAtom(dollarsAtom)
+  const resetCents = useResetAtom(centsAtom)
+
+  return (
+    <>
+      <button onClick={() => setDollars(RESET)}>Reset dollars</button>
+      <button onClick={resetCents}>Reset cents</button>
+    </>
+  )
+}
+```
+
+## useResetAtom
+
+```ts
+function useResetAtom<Value>(
+  anAtom: WritableAtom<Value, typeof RESET>,
+): () => void | Promise<void>
+```
+
+将[可重置的原子](../utilities/resettable.mdx)重置为其初始值。
+
+### 示例
+
+```jsx
+import { useResetAtom } from 'jotai/utils'
+import { todoListAtom } from './store'
+
+const TodoResetButton = () => {
+  const resetTodoList = useResetAtom(todoListAtom)
+  return <button onClick={resetTodoList}>Reset</button>
+}
+```
+
+## atomWithDefault
+
+参考：https://github.com/pmndrs/jotai/issues/352
+
+### 用法
+
+此函数用于创建一个可重置的原始原子。
+它的默认值可以通过读取函数指定，而不是静态初始值。
+
+```js
+import { atomWithDefault } from 'jotai/utils'
+
+const count1Atom = atom(1)
+const count2Atom = atomWithDefault((get) => get(count1Atom) * 2)
+```
+
+### Stackblitz
+
+[在 StackBlitz 中打开](https://stackblitz.com/edit/vitejs-vite-gffb5v?file=src%2FApp.tsx)
+
+### 重置默认值
+
+你可以将 `atomWithDefault` 原子的值重置为其原始默认值。
+
+```jsx
+import { useAtom } from 'jotai'
+import { atomWithDefault, useResetAtom, RESET } from 'jotai/utils'
+
+const count1Atom = atom(1)
+const count2Atom = atomWithDefault((get) => get(count1Atom) * 2)
+
+const Counter = () => {
+  const [count1, setCount1] = useAtom(count1Atom)
+  const [count2, setCount2] = useAtom(count2Atom)
+  const resetCount2 = useResetAtom(count2Atom)
+
+  return (
+    <>
+      <div>
+        count1: {count1}, count2: {count2}
+      </div>
+      <button onClick={() => setCount1((c) => c + 1)}>increment count1</button>
+      <button onClick={() => setCount2((c) => c + 1)}>increment count2</button>
+      <button onClick={() => resetCount2()}>Reset with useResetAtom</button>
+      <button onClick={() => setCount2(RESET)}>Reset with RESET const</button>
+    </>
+  )
+}
+```
+
+当 `atomWithDefault` 原子的值通过 `set` 函数被覆盖后，
+提供的 `getter` 函数将不再被使用，依赖原子的任何变化也不会触发更新。
+此时重置值很有用。
+
+重置值可以恢复原子的原始默认值，丢弃之前通过 `set` 函数所做的更改。
+
+## atomWithRefresh
+
+```ts
+function atomWithRefresh<Value>(
+  read: Read<Value, [], void>,
+): WritableAtom<Value, [], void>
+```
+
+创建一个可以刷新的原子，即强制重新执行读取函数。
+
+这在你需要刷新异步数据时很有用，也可以用来实现"下拉刷新"功能。
+
+```ts
+function atomWithRefresh<Value, Args extends unknown[], Result>(
+  read: Read<Value, Args, Result>,
+  write: Write<Value, Args, Result>,
+): WritableAtom<Value, Args | [], Result | void>
+```
+
+不传参数调用 `set` 会刷新原子。
+传入一个或多个参数调用 `set` 会执行"写入"函数。
+
+### 示例
+
+以下是如何使用它来实现可刷新数据源的示例：
+
+```js
+import { atomWithRefresh } from 'jotai/utils'
+
+const postsAtom = atomWithRefresh((get) =>
+  fetch('https://jsonplaceholder.typicode.com/posts').then((r) => r.json()),
+)
+```
+
+在组件中：
+
+```jsx
+const PostsList = () => {
+  const [posts, refreshPosts] = useAtom(postsAtom)
+
+  return (
+    <div>
+      <ul>
+        {posts.map((post) => (
+          <li key={post.id}>{post.title}</li>
+        ))}
+      </ul>
+
+      {/* 点击此按钮将重新获取文章 */}
+      <button type="button" onClick={() => refreshPosts()}>
+        Refresh posts
+      </button>
+    </div>
+  )
+}
+```

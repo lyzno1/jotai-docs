@@ -1,0 +1,166 @@
+---
+title: Testing
+description: How to test your code using Jotai
+nav: 8.09
+keywords: test,testing
+---
+
+{/*
+translation-source-path: guides/testing.mdx
+translation-source-ref: v2.18.0
+translation-source-hash: 3b61f3a69d097f11d3739677d101b84c670262817c25f673fb872d4fb06abe43
+translation-status: translated
+*/}
+
+
+我们认同 [Testing Library 的指导原则](https://testing-library.com/docs/guiding-principles/)：
+
+- "你的测试越贴近软件的实际使用方式，就越能给你信心。"
+
+我们鼓励你像用户与原子和组件交互那样编写测试，将 Jotai 视为实现细节。
+
+以下是使用 [React Testing Library](https://github.com/testing-library/react-testing-library) 的示例：
+
+`Counter.tsx`：
+
+```jsx
+import { atom, useAtom } from 'jotai'
+
+export const countAtom = atom(0)
+
+export function Counter() {
+  const [count, setCount] = useAtom(countAtom)
+  return (
+    <h1>
+      <p>{count}</p>
+      <button onClick={() => setCount((c) => c + 1)}>one up</button>
+    </h1>
+  )
+}
+```
+
+`Counter.test.ts`：
+
+```jsx
+import React from 'react'
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { Counter } from './Counter'
+
+test('should increment counter', () => {
+  // Arrange
+  render(<Counter />)
+
+  const counter = screen.getByText('0')
+  const incrementButton = screen.getByText('one up')
+  // Act
+  await userEvent.click(incrementButton)
+  // Assert
+  expect(counter.textContent).toEqual('1')
+})
+```
+
+### 注入初始值
+
+你可能希望在开始测试前为原子注入任意值。例如，假设计数器的上限为 100，我们来测试它在达到 100 后是否不再递增。为此，只需使用 [Provider](../core/provider.mdx)，并导出你的原子以便注入值。
+
+```tsx
+import React from 'react'
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { useHydrateAtoms } from 'jotai/utils'
+import { countAtom, Counter } from './Counter'
+import { Provider } from 'jotai'
+
+const HydrateAtoms = ({ initialValues, children }) => {
+  useHydrateAtoms(initialValues)
+  return children
+}
+
+const TestProvider = ({ initialValues, children }) => (
+  <Provider>
+    <HydrateAtoms initialValues={initialValues}>{children}</HydrateAtoms>
+  </Provider>
+)
+
+const CounterProvider = () => {
+  return (
+    <TestProvider initialValues={[[countAtom, 100]]}>
+      <Counter />
+    </TestProvider>
+  )
+}
+
+test('should not increment on max (100)', () => {
+  render(<CounterProvider />)
+
+  const counter = screen.getByText('100')
+  const incrementButton = screen.getByText('one up')
+  await userEvent.click(incrementButton)
+  expect(counter.textContent).toEqual('100')
+})
+```
+
+### 自定义 hooks
+
+如果你有复杂的原子，有时你可能希望单独测试它们。
+
+为此，可以使用 [React Hooks Testing Library](https://github.com/testing-library/react-hooks-testing-library)。以下是一个示例：
+
+`countAtom.ts`：
+
+```ts
+import { useAtom } from 'jotai'
+import { atomWithReducer } from 'jotai/utils'
+
+const reducer = (state: number, action?: 'INCREASE' | 'DECREASE') => {
+  switch (action) {
+    case 'INCREASE':
+      return state + 1
+    case 'DECREASE':
+      return state - 1
+    case undefined:
+      return state
+  }
+}
+export const countAtom = atomWithReducer(0, reducer)
+```
+
+`countAtom.test.ts`：
+
+```ts
+import { renderHook, act } from '@testing-library/react-hooks'
+import { useAtom } from 'jotai'
+import { countAtom } from './countAtom'
+
+test('should increment counter', () => {
+  const { result } = renderHook(() => useAtom(countAtom))
+
+  act(() => {
+    result.current[1]('INCREASE')
+  })
+
+  expect(result.current[0]).toBe(1)
+})
+```
+
+### React Native 示例
+
+当然，你也可以用同样的方式测试 React Native 组件，无论是否使用 Provider。
+
+```tsx
+import React from 'react'
+import { render, fireEvent } from '@testing-library/react-native'
+import { Counter } from './counter'
+
+test('should increment counter', () => {
+  // Arrange
+  const { getByText } = render(<Counter />)
+  const counter = getByText('0')
+  const incrementButton = getByText('one up')
+  // Act
+  fireEvent.press(incrementButton)
+  // Assert
+  expect(counter.props.children.toString()).toEqual('1')
+})
+```

@@ -1,0 +1,107 @@
+---
+title: SSR
+nav: 3.02
+keywords: ssr,server,hydrate,hydration,next,nextjs,gatsby,remix,waku,framework
+---
+
+{/*
+translation-source-path: utilities/ssr.mdx
+translation-source-ref: v2.18.0
+translation-source-hash: 813ebebea0f47a7f22907cd5bcf72f159a58e5438e737b5775e88e18b5c6e811
+translation-status: translated
+*/}
+
+
+## useHydrateAtoms
+
+参考：https://github.com/pmndrs/jotai/issues/340
+
+### 用法
+
+```js
+import { atom, useAtom } from 'jotai'
+import { useHydrateAtoms } from 'jotai/utils'
+
+const countAtom = atom(0)
+const CounterPage = ({ countFromServer }) => {
+  useHydrateAtoms([[countAtom, countFromServer]])
+  const [count] = useAtom(countAtom)
+  // count 的值将是 `countFromServer`，而不是 0。
+}
+```
+
+`useHydrateAtoms` 的主要使用场景是 Next.js 等服务端渲染（SSR）应用，其中初始值通常在服务端获取，然后通过 props 传递给组件。
+
+注意：虽然"水合"一词可能暗示服务端使用，但此 Hook 是为客户端代码设计的，应与 [`'use client'` 指令](https://react.dev/reference/rsc/use-client)一起使用。
+
+```ts
+// 定义
+function useHydrateAtoms(
+  values: Iterable<readonly [Atom<unknown>, unknown]>,
+  options?: { store?: Store },
+): void
+```
+
+此 Hook 接受一个包含 `[atom, value]` 元组的可迭代对象作为参数，以及可选的选项。
+
+```js
+// 使用数组，并指定 store
+useHydrateAtoms(
+  [
+    [countAtom, 42],
+    [frameworkAtom, 'Next.js'],
+  ],
+  { store: myStore },
+)
+// 或使用 Map
+useHydrateAtoms(new Map([[count, 42]]))
+```
+
+每个 Store 中的原子只能被水合一次。因此，如果在重新渲染期间更改了使用的初始值，原子值不会更新。
+如果确实需要重新水合之前已水合的原子，可以将可选的 dangerouslyForceHydrate 设置为 true，
+但请注意这在并发渲染中可能会出现问题。
+
+```js
+useHydrateAtoms(
+  [
+    [countAtom, 42],
+    [frameworkAtom, 'Next.js'],
+  ],
+  {
+    dangerouslyForceHydrate: true,
+  },
+)
+```
+
+如果需要在多个 Store 中水合，可以使用多个 `useHydrateAtoms` Hook 来实现。
+
+```js
+useHydrateAtoms([
+  [countAtom, 42],
+  [frameworkAtom, 'Next.js'],
+])
+useHydrateAtoms(
+  [
+    [countAtom, 17],
+    [frameworkAtom, 'Gatsby'],
+  ],
+  { store: myStore },
+)
+```
+
+如果你使用 TypeScript 且目标为 `ES5`，可能需要在数组上使用 `as const` 断言来保留元组类型。
+
+```ts
+useHydrateAtoms([
+  [countAtom, 42],
+  [frameworkAtom, 'Next.js'],
+] as const)
+```
+
+或者在将原子值传递给 useHydrateAtoms 时使用 Map。你可以在[渲染时初始化状态文档](https://jotai.org/docs/guides/initialize-atom-on-render#using-typescript)中找到可运行的示例。
+
+### 演示
+
+[在 StackBlitz 中打开](https://stackblitz.com/edit/stackblitz-starters-b7cvxi?file=pages%2Findex.tsx)
+
+更多示例请参阅 [Next.js 章节](../guides/nextjs.mdx)。

@@ -1,0 +1,104 @@
+---
+title: Lazy
+nav: 3.03
+keywords: lazy,initialize,init,loading
+---
+
+{/*
+translation-source-path: utilities/lazy.mdx
+translation-source-ref: v2.18.0
+translation-source-hash: 3d9b4cc6cc4106789873f356225bfe34626a5e968320b9e20be714e80da9ce56
+translation-status: translated
+*/}
+
+
+定义原始原子时，初始值必须在定义时绑定。
+如果计算初始值开销很大，或者定义时无法访问该值，
+最好将原子的初始化推迟到[首次在 Store 中使用时](#使用多个-store)。
+
+```jsx
+const imageDataAtom = atom(initializeExpensiveImage()) // 1) 必须在这里计算
+
+function Home() {
+  ...
+}
+
+function ImageEditor() {
+  // 2) 仅在此路由中使用
+  const [imageData, setImageData] = useAtom(imageDataAtom);
+  ...
+}
+
+function App() {
+  return (
+    <Router>
+      <Route path="/" component={Home} />
+      <Route path="/edit" component={ImageEditor} />
+    </Router>
+  )
+}
+```
+
+## atomWithLazy
+
+参考：https://github.com/pmndrs/jotai/pull/2465
+
+我们可以使用 `atomWithLazy` 创建一个原始原子，其初始值将在[首次在 Store 中使用时](#使用多个-store)计算。
+初始化后，它的行为与普通原始原子相同（可以写入）。
+
+### 用法
+
+```jsx
+import { atomWithLazy } from 'jotai/utils'
+
+// 传入初始化函数
+const imageDataAtom = atomWithLazy(initializeExpensiveImage)
+
+function Home() {
+  ...
+}
+
+function ImageEditor() {
+  // 仅在用户访问 `/edit` 时才会初始化。
+  const [imageData, setImageData] = useAtom(imageDataAtom);
+  ...
+}
+
+function App() {
+  return (
+    <Router>
+      <Route path="/" component={Home} />
+      <Route path="/edit" component={ImageEditor} />
+    </Router>
+  )
+}
+```
+
+### 使用多个 Store
+
+由于每个 Store 是独立的宇宙，初始值会在每个 Store 中精确地创建一次（除非使用了类似 `jotai-scope` 的工具，它会将 Store 分割成更小的宇宙）。
+
+```ts
+type RGB = [number, number, number];
+
+function randomRGB(): RGB {
+  ...
+}
+
+const lift = (value: number) => ([r, g, b]: RGB) => {
+  return [r + value, g + value, b + value]
+}
+
+const colorAtom = lazyAtom(randomRGB)
+
+let store = createStore()
+
+console.log(store.get(colorAtom)) // [0, 36, 128]
+store.set(colorAtom, lift(8))
+console.log(store.get(colorAtom)) // [8, 44, 136]
+
+// 重新创建 store，有时在用户登出或以某种方式重置应用时会这样做
+store = createStore()
+
+console.log(store.get(colorAtom)) // [255, 12, 46] -- 一个新的随机颜色
+```

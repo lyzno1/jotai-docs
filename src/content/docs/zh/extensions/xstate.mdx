@@ -1,0 +1,138 @@
+---
+title: XState
+description: This doc describes XState extension.
+nav: 4.05
+keywords: xstate,machine,atomwithmachine
+---
+
+{/*
+translation-source-path: extensions/xstate.mdx
+translation-source-ref: v2.18.0
+translation-source-hash: d839d10ddd14a8ec65c85deddbb57ea994173169331376d07f26efc858d56e71
+translation-status: translated
+*/}
+
+
+Jotai 的状态管理是原始且灵活的，但有时这意味着过于自由。XState 是一个成熟的库，为状态管理提供了更好、更安全的抽象。
+
+### 安装
+
+你需要安装 `xstate` 和 `jotai-xstate` 来使用此功能。
+
+```
+npm install xstate jotai-xstate
+```
+
+## atomWithMachine
+
+`atomWithMachine` 使用 XState 状态机创建一个新的原子。它接收一个 `getMachine` 函数来创建新的状态机。`getMachine` 在首次使用时被调用，带有 `get` 参数，你可以通过它读取其他原子的值。
+
+```tsx
+import { useAtom } from 'jotai'
+import { atomWithMachine } from 'jotai-xstate'
+import { assign, createMachine } from 'xstate'
+
+const createEditableMachine = (value: string) =>
+  createMachine<{ value: string }>({
+    id: 'editable',
+    initial: 'reading',
+    context: {
+      value,
+    },
+    states: {
+      reading: {
+        on: {
+          dblclick: 'editing',
+        },
+      },
+      editing: {
+        on: {
+          cancel: 'reading',
+          commit: {
+            target: 'reading',
+            actions: assign({
+              value: (_, { value }) => value,
+            }),
+          },
+        },
+      },
+    },
+  })
+
+const defaultTextAtom = atom('edit me')
+const editableMachineAtom = atomWithMachine((get) =>
+  // `get` is available only for initializing a machine
+  createEditableMachine(get(defaultTextAtom)),
+)
+
+const Toggle = () => {
+  const [state, send] = useAtom(editableMachineAtom)
+
+  return (
+    <div>
+      {state.matches('reading') && (
+        <strong onDoubleClick={send}>{state.context.value}</strong>
+      )}
+      {state.matches('editing') && (
+        <input
+          autoFocus
+          defaultValue={state.context.value}
+          onBlur={(e) => send({ type: 'commit', value: e.target.value })}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              send({ type: 'commit', value: e.target.value })
+            }
+            if (e.key === 'Escape') {
+              send('cancel')
+            }
+          }}
+        />
+      )}
+      <br />
+      <br />
+      <div>
+        双击进行编辑。失焦或按 <code>enter</code> 键提交。按 <code>esc</code> 键取消。
+      </div>
+    </div>
+  )
+}
+```
+
+### 在全局 Provider 中存储的可重启状态机（无 Provider 模式）
+
+当状态机到达终态时，它将无法再接收任何事件。如果你的 atomWithMachine 是在全局 Store 中初始化的（即无 Provider 模式），要重启它，你需要向状态机发送 `RESTART` 事件，如下所示：
+
+```tsx
+import { RESTART } from 'jotai-xstate'
+
+const YourComponent = () => {
+  const [current, send] = useAtom(yourMachineAtom)
+
+  const isFinalState = current.matches('myFinalState')
+
+  useEffect(() => {
+    // restart globally initialized machine on component unmount
+    return () => {
+      if (isFinalState) send(RESTART)
+    }
+  }, [isFinalState])
+}
+```
+
+### 示例
+
+查看 atomWithMachine 的示例：
+
+[在 StackBlitz 中打开](https://stackblitz.com/edit/vitejs-vite-oqfhy4?file=src%2FApp.tsx)
+
+可重启状态机：
+
+[在 StackBlitz 中打开](https://stackblitz.com/edit/vitejs-vite-tqdtym?file=src%2FApp.tsx)
+
+### 教程
+
+查看关于 Jotai 和 XState 的课程。
+
+[Complex State Management in React with Jotai and XState](https://egghead.io/courses/complex-state-management-in-react-with-jotai-and-xstate-3be0a740)
+
+（注意：课程中使用的是 `jotai/xstate`，该包已被 `jotai-xstate` 取代。）

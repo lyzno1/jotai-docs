@@ -1,0 +1,38 @@
+---
+title: Reducer
+nav: 3.99
+keywords: reducer,action,dispatch
+published: false
+---
+
+{/*
+translation-source-path: utilities/reducer.mdx
+translation-source-ref: v2.18.0
+translation-source-hash: f952daf64525f753bbeb4a1b5f931e6dded2edf9f3e16fcc8d0dccff52c05735
+translation-status: translated
+*/}
+
+
+## atomWithReducer
+
+参考：https://github.com/pmndrs/jotai/issues/38
+
+```js
+import { atomWithReducer } from 'jotai/utils'
+
+const countReducer = (prev, action) => {
+  if (action.type === 'inc') return prev + 1
+  if (action.type === 'dec') return prev - 1
+  throw new Error('unknown action type')
+}
+
+const countReducerAtom = atomWithReducer(0, countReducer)
+```
+
+### Stackblitz
+
+[在 StackBlitz 中打开](https://stackblitz.com/edit/vitejs-vite-bbpmjn?file=src%2FApp.tsx)
+
+## useReducerAtom
+
+参见 [useReducerAtom](../recipes/use-reducer-atom.mdx) 配方。

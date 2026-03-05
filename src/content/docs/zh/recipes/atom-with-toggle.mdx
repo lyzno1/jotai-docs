@@ -1,0 +1,63 @@
+---
+title: atomWithToggle
+nav: 9.04
+keywords: creators,toggle
+---
+
+{/*
+translation-source-path: recipes/atom-with-toggle.mdx
+translation-source-ref: v2.18.0
+translation-source-hash: 7a5255eb9eb89147089ff6ac1670ae69b965185f04f837d9741a0b48cbc4a776
+translation-status: translated
+*/}
+
+
+> `atomWithToggle` 创建一个以布尔值为初始状态的新原子，并提供一个切换状态的 setter 函数。
+
+这样可以避免为了更新某个原子的状态而额外创建另一个原子的样板代码。
+
+```ts
+import { WritableAtom, atom } from 'jotai'
+
+export function atomWithToggle(
+  initialValue?: boolean,
+): WritableAtom<boolean, [boolean?], void> {
+  const anAtom = atom(initialValue, (get, set, nextValue?: boolean) => {
+    const update = nextValue ?? !get(anAtom)
+    set(anAtom, update)
+  })
+
+  return anAtom as WritableAtom<boolean, [boolean?], void>
+}
+```
+
+可以通过第一个参数传入可选的初始状态。
+
+setter 函数接受一个可选参数，用于强制设置特定状态。例如，你可以用它来实现一个 setActive 函数。
+
+使用方式如下：
+
+```js
+import { atomWithToggle } from 'XXX'
+
+// 初始值设为 true
+const isActiveAtom = atomWithToggle(true)
+```
+
+在组件中的用法：
+
+```jsx
+const Toggle = () => {
+  const [isActive, toggle] = useAtom(isActiveAtom)
+
+  return (
+    <>
+      <button onClick={() => toggle()}>
+        isActive: {isActive ? 'yes' : 'no'}
+      </button>
+      <button onClick={() => toggle(true)}>force true</button>
+      <button onClick={() => toggle(false)}>force false</button>
+    </>
+  )
+}
+```

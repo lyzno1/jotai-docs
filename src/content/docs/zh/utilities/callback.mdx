@@ -1,0 +1,76 @@
+---
+title: Callback
+nav: 3.99
+keywords: callback
+published: false
+---
+
+{/*
+translation-source-path: utilities/callback.mdx
+translation-source-ref: v2.18.0
+translation-source-hash: b2d85b04c9b18a83aaf5ce14f2dff61c8cd98020cbe5cce591190b3d361a4a2b
+translation-status: translated
+*/}
+
+
+## useAtomCallback
+
+参考：https://github.com/pmndrs/jotai/issues/60
+
+### 用法
+
+```ts
+useAtomCallback<Result, Args extends unknown[]>(
+  callback: (get: Getter, set: Setter, ...arg: Args) => Result,
+  options?: Options
+): (...args: Args) => Result
+```
+
+此 Hook 用于命令式地与原子交互。
+它接受一个类似于原子写入函数的回调函数，
+并返回一个可获取原子值的函数。
+
+传入 Hook 的回调必须是稳定的（应使用 useCallback 包装）。
+
+### 示例
+
+```jsx
+import { useEffect, useState, useCallback } from 'react'
+import { Provider, atom, useAtom } from 'jotai'
+import { useAtomCallback } from 'jotai/utils'
+
+const countAtom = atom(0)
+
+const Counter = () => {
+  const [count, setCount] = useAtom(countAtom)
+  return (
+    <>
+      {count} <button onClick={() => setCount((c) => c + 1)}>+1</button>
+    </>
+  )
+}
+
+const Monitor = () => {
+  const [count, setCount] = useState(0)
+  const readCount = useAtomCallback(
+    useCallback((get) => {
+      const currCount = get(countAtom)
+      setCount(currCount)
+      return currCount
+    }, []),
+  )
+  useEffect(() => {
+    const timer = setInterval(async () => {
+      console.log(readCount())
+    }, 1000)
+    return () => {
+      clearInterval(timer)
+    }
+  }, [readCount])
+  return <div>current count: {count}</div>
+}
+```
+
+### Stackblitz
+
+[在 StackBlitz 中打开](https://stackblitz.com/edit/vitejs-vite-ekxjhs?file=src%2FApp.tsx)

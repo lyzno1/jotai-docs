@@ -1,0 +1,168 @@
+---
+title: Atoms in atom
+nav: 8.12
+---
+
+{/*
+translation-source-path: guides/atoms-in-atom.mdx
+translation-source-ref: v2.18.0
+translation-source-hash: 41531448ed1d090d1b59eec6e8a3f5149a3b3a4bcb35e37edb9db09c58a868d2
+translation-status: translated
+*/}
+
+
+`atom()` 创建的是一个原子配置对象，它本身不持有值。
+原子配置没有字符串键，我们通过引用相等性来标识它们。
+换句话说，我们可以把原子配置当作键来使用。
+
+### 在 useState 中存储原子配置
+
+首先，我们可以在 useState 中存储原子配置。
+
+```jsx
+const Component = ({ atom1, atom2 }) => {
+  const [selectedAtom, setSelectedAtom] = useState(atom1)
+  const [value] = useAtom(selectedAtom)
+  return (
+    <div>
+      Selected value: {value}
+      <button onClick={() => setSelectedAtom(atom1)}>Select an atom</button>
+      <button onClick={() => setSelectedAtom(atom2)}>
+        Select another atom
+      </button>
+    </div>
+  )
+}
+```
+
+注意，我们可以将原子配置作为 props 传递。
+
+虽然看起来可能没有什么实际意义，但我们确实可以按需创建原子配置。
+
+```jsx
+const Component = () => {
+  const [currentAtom, setCurrentAtom] = useState(() => atom(0))
+  const [count, setCount] = useAtom(currentAtom)
+  return (
+    <div>
+      Count: {count} <button onClick={() => setCount((c) => c + 1)}>+1</button>
+      <button onClick={() => setCurrentAtom(atom(0))}>Create new</button>
+    </div>
+  )
+}
+```
+
+### 在原子中存储原子配置
+
+同样，我们可以将一个原子配置作为另一个原子的值来存储。
+
+```jsx
+const firstNameAtom = atom('Tanjiro')
+const lastNameAtom = atom('Kamado')
+
+const showingNameAtom = atom(firstNameAtom)
+
+const Component = () => {
+  const [nameAtom, setNameAtom] = useAtom(showingNameAtom)
+  const [name] = useAtom(nameAtom)
+  return (
+    <div>
+      Name: {name}
+      <button onClick={() => setNameAtom(firstNameAtom)}>
+        Show First Name
+      </button>
+      <button onClick={() => setNameAtom(lastNameAtom)}>Show Last Name</button>
+    </div>
+  )
+}
+```
+
+也可以创建派生原子。
+
+```js
+const derivedNameAtom = atom((get) => {
+  const nameAtom = get(showingNameAtom)
+  return get(nameAtom)
+})
+
+// 或者更简短的写法
+const derivedNameAtom = atom((get) => get(get(showingNameAtom)))
+```
+
+为了避免混淆原子中存储的内容，明确地命名原子很重要。
+同时，TypeScript 的类型信息也会有所帮助。
+
+### 在原子中存储原子配置数组
+
+最后，"原子中的原子"模式就是将原子配置数组存储到一个原子中。
+
+```jsx
+const countsAtom = atom([atom(1), atom(2), atom(3)])
+
+const Counter = ({ countAtom }) => {
+  const [count, setCount] = useAtom(countAtom)
+  return (
+    <div>
+      {count} <button onClick={() => setCount((c) => c + 1)}>+1</button>
+    </div>
+  )
+}
+
+const Parent = () => {
+  const [counts, setCounts] = useAtom(countsAtom)
+  const addNewCount = () => {
+    const newAtom = atom(0)
+    setCounts((prev) => [...prev, newAtom])
+  }
+  return (
+    <div>
+      {counts.map((countAtom) => (
+        <Counter countAtom={countAtom} key={countAtom} />
+      ))}
+      <button onClick={addNewCount}>Add</button>
+    </div>
+  )
+}
+```
+
+这种方式的好处是：当你递增某个计数时，只有对应的 Counter 组件会重新渲染，其他组件不会重新渲染。
+
+需要注意的是，`anAtom.toString()` 会返回一个唯一 ID，可以用作 map 中的 `key`。
+
+#### TypeScript 用户提示
+
+```jsx
+<Counter countAtom={countAtom} key={`${countAtom}`} />
+```
+
+### 在原子中存储原子配置 Map
+
+同样，我们可以存储对象映射来代替数组。
+
+```jsx
+const pricesAtom = atom({
+  apple: atom(15),
+  orange: atom(12),
+  pineapple: atom(25),
+})
+
+const Fruit = ({ name, priceAtom }) => {
+  const [price] = useAtom(priceAtom)
+  return (
+    <div>
+      {name}: {price}
+    </div>
+  )
+}
+
+const Parent = () => {
+  const [prices] = useAtom(pricesAtom)
+  return (
+    <div>
+      {Object.keys(prices).map((name) => (
+        <Fruit name={name} priceAtom={prices[name]} key={name} />
+      ))}
+    </div>
+  )
+}
+```

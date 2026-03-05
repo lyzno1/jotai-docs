@@ -1,0 +1,42 @@
+---
+title: Vite
+description: How to use Jotai with Vite
+nav: 8.99
+keywords: vite
+published: false
+---
+
+{/*
+translation-source-path: guides/vite.mdx
+translation-source-ref: v2.18.0
+translation-source-hash: d6efb08902dc8239a780676275daca4d83d706edaaa48f12009fab25c8612fb2
+translation-status: translated
+*/}
+
+
+你可以使用 `jotai-babel` 包中的插件来提升使用 Vite 和 Jotai 时的开发体验。
+
+在你的 `vite.config.ts` 中：
+
+```js
+import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
+import jotaiDebugLabel from 'jotai-babel/plugin-debug-label'
+import jotaiReactRefresh from 'jotai-babel/plugin-react-refresh'
+
+// https://vitejs.dev/config/
+export default defineConfig({
+  plugins: [
+    react({ babel: { plugins: [jotaiDebugLabel, jotaiReactRefresh] } }),
+  ],
+  // ... The rest of your configuration
+})
+```
+
+以下是一个模板，你可以自行尝试。
+
+### 示例
+
+#### Vite 模板
+
+[在 StackBlitz 中打开](https://stackblitz.com/edit/vitejs-vite-xhhxve?file=vite.config.ts)

@@ -1,0 +1,94 @@
+---
+title: Resettable
+description: How to use resettable atoms
+nav: 8.99
+published: false
+---
+
+{/*
+translation-source-path: guides/resettable.mdx
+translation-source-ref: v2.18.0
+translation-source-hash: 24cfb40d96e37a201baa1afa59e0c64726446e682399951822945fff91609fc6
+translation-status: translated
+*/}
+
+
+Jotai 核心不支持可重置的原子，但你可以使用 `jotai/utils` 中的辅助函数来创建它们。
+
+### 使用 atomWithReset / useResetAtom 创建可重置的原始原子
+
+```jsx
+import { useAtom } from 'jotai'
+import { atomWithReset, useResetAtom } from 'jotai/utils'
+
+const todoListAtom = atomWithReset([
+  { description: 'Add a todo', checked: false },
+])
+
+const TodoList = () => {
+  const [todoList, setTodoList] = useAtom(todoListAtom)
+  const resetTodoList = useResetAtom(todoListAtom)
+
+  return (
+    <>
+      <ul>
+        {todoList.map((todo) => (
+          <li>{todo.description}</li>
+        ))}
+      </ul>
+
+      <button
+        onClick={() =>
+          setTodoList((l) => [
+            ...l,
+            {
+              description: `New todo ${new Date().toDateString()}`,
+              checked: false,
+            },
+          ])
+        }
+      >
+        Add todo
+      </button>
+      <button onClick={resetTodoList}>Reset</button>
+    </>
+  )
+}
+```
+
+### 示例
+
+[在 StackBlitz 中打开](https://stackblitz.com/edit/vitejs-vite-2s1vg6?file=src%2FApp.tsx)
+
+### 使用 RESET 符号的派生原子
+
+```jsx
+import { atom, useAtom, useSetAtom } from 'jotai'
+import { atomWithReset, useResetAtom, RESET } from 'jotai/utils'
+
+const dollarsAtom = atomWithReset(0)
+const centsAtom = atom(
+  (get) => get(dollarsAtom) * 100,
+  (get, set, newValue: number | typeof RESET) =>
+    set(dollarsAtom, newValue === RESET ? newValue : newValue / 100)
+)
+
+const ResetExample = () => {
+  const [dollars] = useAtom(dollarsAtom)
+  const setCents = useSetAtom(centsAtom)
+  const resetCents = useResetAtom(centsAtom)
+
+  return (
+    <>
+      <h3>Current balance ${dollars}</h3>
+      <button onClick={() => setCents(100)}>Set $1</button>
+      <button onClick={() => setCents(200)}>Set $2</button>
+      <button onClick={resetCents}>Reset</button>
+    </>
+  )
+}
+```
+
+### 示例
+
+[在 StackBlitz 中打开](https://stackblitz.com/edit/vitejs-vite-wjgquh?file=src%2FApp.tsx)

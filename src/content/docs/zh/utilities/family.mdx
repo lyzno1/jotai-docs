@@ -1,0 +1,220 @@
+---
+title: Family
+nav: 3.5
+keywords: family
+---
+
+{/*
+translation-source-path: utilities/family.mdx
+translation-source-ref: v2.18.0
+translation-source-hash: d37d394d9ae1d7ffcd635917d41cf04623e1d2214f1ff9c904a1783d28730f46
+translation-status: translated
+*/}
+
+
+## atomFamily
+
+:::caution 已弃用
+`atomFamily` 已弃用，将在 Jotai v3 中移除。
+
+请迁移至 [`jotai-family`](https://github.com/jotaijs/jotai-family) 包，它提供相同的 API 以及 `atomTree` 等额外功能。
+
+**迁移方式：**
+
+```bash
+npm install jotai-family
+```
+
+```ts
+// 迁移前
+import { atomFamily } from 'jotai/utils'
+
+// 迁移后
+import { atomFamily } from 'jotai-family'
+```
+
+API 完全相同，只需更改 import 语句即可。
+:::
+
+参考：https://github.com/pmndrs/jotai/issues/23
+
+### 用法
+
+```js
+atomFamily(initializeAtom, areEqual): (param) => Atom
+```
+
+此函数接受 `param` 参数并返回一个原子。
+如果该原子已经被创建过，则会从缓存中返回。
+`initializeAtom` 是一个可以返回任意类型原子的函数（`atom()`、`atomWithDefault()` 等）。
+注意 `areEqual` 参数是可选的，用于比较两个参数是否相等（默认使用 `Object.is`）。
+
+要实现类似 [Recoil 的 atomFamily/selectorFamily](https://recoiljs.org/docs/api-reference/utils/atomFamily) 的行为，
+可以为 `areEqual` 指定一个深度比较函数。例如：
+
+```js
+import { atom } from 'jotai'
+import { atomFamily } from 'jotai/utils'
+import deepEqual from 'fast-deep-equal'
+
+const fooFamily = atomFamily((param) => atom(param), deepEqual)
+```
+
+### TypeScript
+
+原子族的类型会从 initializeAtom 自动推断。以下是使用原始原子的典型用法。
+
+```ts
+import type { PrimitiveAtom } from 'jotai'
+
+/**
+ * 这里 atom(id) 返回 PrimitiveAtom<number>
+ * 而 PrimitiveAtom<number> 是 WritableAtom<number, SetStateAction<number>>
+ */
+const myFamily = atomFamily((id: number) => atom(id))
+```
+
+你也可以使用 TypeScript 泛型显式声明参数和原子的类型。
+
+```ts
+atomFamily<Param, AtomType extends Atom<unknown>>(
+  initializeAtom: (param: Param) => AtomType,
+  areEqual?: (a: Param, b: Param) => boolean
+): AtomFamily<Param, AtomType>
+```
+
+显式类型示例：
+
+```ts
+import { atom } from 'jotai'
+import type { PrimitiveAtom } from 'jotai'
+import { atomFamily } from 'jotai/utils'
+
+const myFamily = atomFamily<number, PrimitiveAtom<number>>((id: number) =>
+  atom(id),
+)
+```
+
+### API 方法
+
+`atomFamily` 函数返回一个包含以下方法的对象：
+
+#### `myFamily(param)`
+
+返回给定参数对应的原子。如果该原子已经被创建过，则会从缓存中返回。
+
+#### `myFamily.getParams()`
+
+返回当前缓存中所有参数的可迭代对象。
+
+```js
+const todoFamily = atomFamily((name) => atom(name))
+
+todoFamily('foo')
+todoFamily('bar')
+
+for (const param of todoFamily.getParams()) {
+  console.log(param) // 'foo', 'bar'
+}
+```
+
+#### `myFamily.remove(param)`
+
+从缓存中移除指定参数。
+
+```js
+todoFamily.remove('foo')
+```
+
+#### `myFamily.setShouldRemove(shouldRemove)`
+
+注册一个 `shouldRemove` 函数，该函数会在注册时**立即执行**，并在从缓存获取原子时再次执行。
+
+- `shouldRemove` 是一个接受两个参数的函数：`createdAt`（毫秒时间戳）和 `param`，返回布尔值。
+- 传入 `null` 将移除之前注册的函数。
+
+```js
+// 移除超过 1 小时的原子
+todoFamily.setShouldRemove((createdAt, param) => {
+  return Date.now() - createdAt > 60 * 60 * 1000
+})
+```
+
+#### `myFamily.unstable_listen(callback)`
+
+**不稳定 API**：此 API 用于高级场景，可能会在不通知的情况下变更。
+
+在原子被创建或移除时触发。返回一个清理函数。
+
+```js
+const cleanup = todoFamily.unstable_listen((event) => {
+  console.log(event.type) // 'CREATE' or 'REMOVE'
+  console.log(event.param) // the param
+  console.log(event.atom) // the atom
+})
+
+// 稍后停止监听
+cleanup()
+```
+
+### 注意：内存泄漏
+
+在内部，atomFamily 只是一个以参数为键、原子配置为值的 Map。
+除非你显式移除不再使用的参数，否则会导致内存泄漏。
+当你使用无限数量的参数时，这一点尤为重要。
+
+使用 `myFamily.remove(param)` 或 `myFamily.setShouldRemove(shouldRemove)` 来管理内存。
+
+### 示例
+
+```js
+import { atom } from 'jotai'
+import { atomFamily } from 'jotai/utils'
+
+const todoFamily = atomFamily((name) => atom(name))
+
+todoFamily('foo')
+// 这将创建一个新的 atom('foo')，如果已经创建过则返回缓存的版本
+```
+
+```js
+import { atom } from 'jotai'
+import { atomFamily } from 'jotai/utils'
+
+const todoFamily = atomFamily((name) =>
+  atom(
+    (get) => get(todosAtom)[name],
+    (get, set, arg) => {
+      const prev = get(todosAtom)
+      set(todosAtom, { ...prev, [name]: { ...prev[name], ...arg } })
+    },
+  ),
+)
+```
+
+```js
+import { atom } from 'jotai'
+import { atomFamily } from 'jotai/utils'
+
+const todoFamily = atomFamily(
+  ({ id, name }) => atom({ name }),
+  (a, b) => a.id === b.id,
+)
+```
+
+### Stackblitz
+
+[在 StackBlitz 中打开](https://stackblitz.com/edit/vitejs-vite-rx6npn?file=src%2FApp.tsx)
+
+---
+
+## 迁移至 jotai-family
+
+对于新项目或更新现有代码，我们建议使用 [`jotai-family`](https://github.com/jotaijs/jotai-family) 包。它提供：
+
+- **相同的 API**：可直接替换 `atomFamily`
+- **额外功能**：包含 `atomTree` 用于层级化的原子管理
+- **更好的维护**：专门的包，开发更集中
+- **面向未来**：将在 Jotai v3 及更高版本中持续支持
+
+详见 [jotai-family 文档](https://github.com/jotaijs/jotai-family#readme)。

@@ -1,0 +1,148 @@
+---
+title: Initializing state on render
+description: How to initialize atom state on initial render
+nav: 8.13
+---
+
+{/*
+translation-source-path: guides/initialize-atom-on-render.mdx
+translation-source-ref: v2.18.0
+translation-source-hash: fe967f77053831590c877301db4060c156990869882f0ac8ec4cba58234f08cc
+translation-status: translated
+*/}
+
+
+有时你需要创建一个使用原子的可复用组件。
+
+这些原子的初始状态由传递给组件的 props 决定。
+
+下面是一个基本示例，说明如何使用 `Provider` 及其 prop `initialValues` 来初始化状态。
+
+### 基本示例
+
+> CodeSandbox 链接：[codesandbox](https://codesandbox.io/s/init-atoms-with-usehydrateatoms-nryk1w)。
+
+假设你有一个可复用的 `TextDisplay` 组件，用于显示和更新纯文本。
+
+该组件有两个子组件：`PrettyText` 和 `UpdateTextInput`。
+
+- `PrettyText` 以蓝色显示文本。
+- `UpdateTextInput` 是一个用于更新文本值的输入框。
+
+与其将 `text` 作为 prop 传递给两个子组件，你决定将 `text` 状态作为原子在组件间共享。
+
+为了使 `TextDisplay` 组件可复用，我们接收一个 `initialTextValue` prop，它决定了 `text` 原子的初始状态。
+
+为了将 `initialTextValue` 与 `textAtom` 关联，我们将子组件包裹在一个组件中，在这个组件中创建新的 store 并传递给 `Provider` 组件。
+
+```jsx
+const textAtom = atom('')
+
+const PrettyText = () => {
+  const [text] = useAtom(textAtom)
+  return (
+    <>
+      <text
+        style={{
+          color: 'blue',
+        }}
+      >
+        {text}
+      </text>
+    </>
+  )
+}
+
+const UpdateTextInput = () => {
+  const [text, setText] = useAtom(textAtom)
+  const handleInputChange = (e) => {
+    setText(e.target.value)
+  }
+  return (
+    <>
+      <input onChange={handleInputChange} value={text} />
+    </>
+  )
+}
+
+const HydrateAtoms = ({ initialValues, children }) => {
+  // initialising on state with prop on render here
+  useHydrateAtoms(initialValues)
+  return children
+}
+
+export const TextDisplay = ({ initialTextValue }) => (
+  <Provider>
+    <HydrateAtoms initialValues={[[textAtom, initialTextValue]]}>
+      <PrettyText />
+      <br />
+      <UpdateTextInput />
+    </HydrateAtoms>
+  </Provider>
+)
+```
+
+现在，我们可以轻松地以不同的初始文本值复用 `TextDisplay` 组件，即使它们引用的是"同一个"原子。
+
+```jsx
+export default function App() {
+  return (
+    <div className="App">
+      <TextDisplay initialTextValue="initial text value 1" />
+
+      <TextDisplay initialTextValue="initial text value 2" />
+    </div>
+  )
+}
+```
+
+之所以能这样做，是因为子组件会向上查找最近的 `Provider` 祖先来获取其值。
+
+关于 `Provider` 行为的更多信息，请阅读[这里](../core/provider.mdx)的文档。
+
+对于更复杂的使用场景，请查看 [Scope 扩展](../extensions/scope.mdx)。
+
+### 使用 TypeScript
+
+`useHydrateAtoms` 有重载类型，TypeScript 无法从重载函数中提取类型。建议在传递初始原子值给 `useHydrateAtoms` 时使用 `Map`。
+
+以下是一个可运行的示例：
+
+```tsx
+import type { ReactNode } from 'react'
+import { Provider, atom, useAtomValue } from 'jotai'
+import type { WritableAtom } from 'jotai'
+import { useHydrateAtoms } from 'jotai/utils'
+
+const testAtom = atom('')
+
+export default function App() {
+  return (
+    <Provider>
+      <AtomsHydrator atomValues={[[testAtom, 'hello']]}>
+        <Component />
+      </AtomsHydrator>
+    </Provider>
+  )
+}
+
+//This component contains all the states and the logic
+function Component() {
+  const testAtomValue = useAtomValue(testAtom)
+  return <div>{testAtomValue}</div>
+}
+
+function AtomsHydrator({
+  atomValues,
+  children,
+}: {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  atomValues: Iterable<
+    readonly [WritableAtom<unknown, [any], unknown>, unknown]
+  >
+  children: ReactNode
+}) {
+  useHydrateAtoms(new Map(atomValues))
+  return children
+}
+```

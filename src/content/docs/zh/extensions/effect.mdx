@@ -1,0 +1,369 @@
+---
+title: Effect
+description: A Jōtai utility package for reactive side effects
+nav: 4.03
+keywords: effect, atom effect, side effect, side-effect, sideeffect
+---
+
+{/*
+translation-source-path: extensions/effect.mdx
+translation-source-ref: v2.18.0
+translation-source-hash: 8ecdee2f7f3688a8fd65d3fdf44a7c8f39dfe34a97bebf86071440c62c97b066
+translation-status: translated
+*/}
+
+
+[jotai-effect](https://github.com/jotaijs/jotai-effect) 是 Jotai 的响应式副作用工具包。
+
+## 安装
+
+```
+npm install jotai-effect
+```
+
+## observe
+
+`observe` 将一个 `effect` 挂载到 Jotai `store` 上，用于监听状态变化。它适用于在 Store 级别运行全局副作用或逻辑。
+
+如果你无法访问 store 对象且未使用默认 store，请改用 `atomEffect` 或 `withAtomEffect`。
+
+### 签名
+
+```ts
+type Cleanup = () => void
+
+type Effect = (
+  get: Getter & { peek: Getter }
+  set: Setter & { recurse: Setter }
+) => Cleanup | void
+
+type Unobserve = () => void
+
+function observe(effect: Effect, store?: Store): Unobserve
+```
+
+**effect：** 用于观察和响应原子状态变化的函数。
+
+**store：** 挂载 effect 的 Jotai store。如果未提供，默认使用全局 store。
+
+**返回值：** 一个稳定的函数，用于从 store 中移除 effect 并清理所有内部引用。
+
+### 用法
+
+```js
+import { observe } from 'jotai-effect'
+
+const unobserve = observe((get, set) => {
+  set(logAtom, `someAtom changed: ${get(someAtom)}`)
+})
+
+unobserve()
+```
+
+这使你可以在 React 生命周期之外运行依赖 Jotai 状态的逻辑，非常适合应用级别的副作用。
+
+### 在 React 中使用
+
+将 store 同时传递给 `observe` 和 `Provider`，以确保 effect 挂载到正确的 store 上。
+
+```tsx
+const store = createStore()
+const unobserve = observe((get, set) => {
+  set(logAtom, `someAtom changed: ${get(someAtom)}`)
+}, store)
+
+<Provider store={store}>...</Provider>
+```
+
+[Open in StackBlitz](https://stackblitz.com/edit/vitejs-vite-uk7p8i5q?file=src%2FApp.tsx)
+
+## atomEffect
+
+`atomEffect` 创建一个原子，用于声明在挂载时响应状态变化的副作用。
+
+### 签名
+
+```ts
+function atomEffect(effect: Effect): Atom<void>
+```
+
+**effect：** 用于观察和响应原子状态变化的函数。
+
+### 用法
+
+```js
+import { atomEffect } from 'jotai-effect'
+
+const logEffect = atomEffect((get, set) => {
+  set(logAtom, get(someAtom)) // Runs on mount or when someAtom changes
+  return () => {
+    set(logAtom, 'unmounting') // Cleanup on unmount
+  }
+})
+
+// activates the atomEffect while Component is mounted
+function Component() {
+  useAtom(logEffect)
+}
+```
+
+## withAtomEffect
+
+`withAtomEffect` 将一个 effect 绑定到目标原子的克隆上。当克隆的原子处于挂载状态时，effect 处于活跃状态。
+
+### 签名
+
+```ts
+function withAtomEffect<T>(targetAtom: Atom<T>, effect: Effect): Atom<T>
+```
+
+**targetAtom：** effect 所绑定的原子。
+
+**effect：** 用于观察和响应原子状态变化的函数。
+
+**返回值：** 一个与目标原子等价但绑定了 effect 的原子。
+
+### 用法
+
+```js
+import { withAtomEffect } from 'jotai-effect'
+
+const valuesAtom = withAtomEffect(atom(null), (get, set) => {
+  set(valuesAtom, get(countAtom))
+  return () => {
+    // cleanup
+  }
+})
+```
+
+## 依赖管理
+
+除挂载事件外，effect 会在其任何依赖的值发生变化时运行。
+
+- **同步：**
+  在 effect 内部通过 `get` 访问的所有原子都会被添加为该原子的依赖。
+
+  {/* prettier-ignore */}
+  <details style="cursor: pointer; user-select: none;">
+    <summary>示例</summary>
+
+  ```js
+  atomEffect((get, set) => {
+    // updates whenever `anAtom` changes value
+    get(anAtom)
+  })
+  ```
+
+  </details>
+
+- **异步：**
+  异步的 `get` 调用不会添加依赖。
+
+  {/* prettier-ignore */}
+  <details style="cursor: pointer; user-select: none;">
+    <summary>示例</summary>
+
+  ```js
+  atomEffect((get, set) => {
+    setTimeout(() => {
+      // does not add `anAtom` as a dependency
+      get(anAtom)
+    })
+  })
+  ```
+
+  </details>
+
+- **清理：**
+  清理函数中的 `get` 调用不会添加依赖。
+
+  {/* prettier-ignore */}
+  <details style="cursor: pointer; user-select: none;">
+    <summary>示例</summary>
+
+  ```js
+  atomEffect((get, set) => {
+    return () => {
+      // does not add `anAtom` as a dependency
+      get(anAtom)
+    }
+  })
+  ```
+
+  </details>
+
+- **依赖映射重新计算：**
+  依赖在每次运行时都会重新计算。
+
+  {/* prettier-ignore */}
+  <details style="cursor: pointer; user-select: none;">
+    <summary>示例</summary>
+
+  ```js
+  atomEffect((get, set) => {
+    if (get(isEnabledAtom)) {
+      // `isEnabledAtom` and `anAtom` are dependencies
+      const aValue = get(anAtom)
+    } else {
+      // `isEnabledAtom` and `anotherAtom` are dependencies
+      const anotherValue = get(anotherAtom)
+    }
+  })
+  ```
+
+  </details>
+
+## Effect 行为
+
+- **同步执行：**
+  `effect` 在同步求值完成后，于当前任务中同步运行。
+
+  {/* prettier-ignore */}
+  <details style="cursor: pointer; user-select: none;">
+    <summary>示例</summary>
+
+  ```js
+  const logCounts = atomEffect((get, set) => {
+    set(logAtom, `count is ${get(countAtom)}`)
+  })
+  const actionAtom = atom(null, (get, set) => {
+    get(logAtom) // 'count is 0'
+    set(countAtom, (value) => value + 1) // effect runs synchronously
+    get(logAtom) // 'count is 1'
+  })
+  store.sub(logCounts, () => {})
+  store.set(actionAtom)
+  ```
+
+  </details>
+
+- **批量更新：**
+  多个同步更新会被批处理为单个原子事务。
+
+  {/* prettier-ignore */}
+  <details style="cursor: pointer; user-select: none;">
+    <summary>示例</summary>
+
+  ```js
+  const tensAtom = atom(0)
+  const onesAtom = atom(0)
+  const updateTensAndOnes = atom(null, (get, set) => {
+    set(tensAtom, (value) => value + 1)
+    set(onesAtom, (value) => value + 1)
+  })
+  const combos = atom([])
+  const effectAtom = atomEffect((get, set) => {
+    const value = get(tensAtom) * 10 + get(onesAtom)
+    set(combos, (arr) => [...arr, value])
+  })
+  store.sub(effectAtom, () => {})
+  store.set(updateTensAndOnes)
+  store.get(combos) // [00, 11]
+  ```
+
+  </details>
+
+- **抵抗无限循环：**
+  `atomEffect` 在更新它自身正在监听的值时，会避免重新运行。
+
+  {/* prettier-ignore */}
+  <details style="cursor: pointer; user-select: none;">
+    <summary>示例</summary>
+
+  ```js
+  atomEffect((get, set) => {
+    get(countAtom)
+    set(countAtom, (value) => value + 1) // Will not loop
+  })
+  ```
+
+  </details>
+
+- **清理函数：**
+  清理函数在卸载时或重新求值前调用。
+
+  {/* prettier-ignore */}
+  <details style="cursor: pointer; user-select: none;">
+    <summary>示例</summary>
+
+  ```js
+  atomEffect((get, set) => {
+    const intervalId = setInterval(() => set(clockAtom, Date.now()))
+    return () => clearInterval(intervalId)
+  })
+  ```
+
+  </details>
+
+- **幂等性：**
+  `atomEffect` 每次状态变化只运行一次，无论被引用多少次。
+
+  {/* prettier-ignore */}
+  <details style="cursor: pointer; user-select: none;">
+    <summary>示例</summary>
+
+  ```js
+  let i = 0
+  const effectAtom = atomEffect(() => {
+    get(countAtom)
+    i++
+  })
+  store.sub(effectAtom, () => {})
+  store.sub(effectAtom, () => {})
+  store.set(countAtom, (value) => value + 1)
+  console.log(i) // 1
+  ```
+
+  </details>
+
+- **条件性运行 Effect：**
+  `atomEffect` 仅在挂载时运行。
+
+  {/* prettier-ignore */}
+  <details style="cursor: pointer; user-select: none;">
+    <summary>示例</summary>
+
+  ```js
+  atom((get) => {
+    if (get(isEnabledAtom)) {
+      get(effectAtom)
+    }
+  })
+  ```
+
+  </details>
+
+- **支持 Peek：**
+  使用 `get.peek` 可以读取原子数据而不订阅。
+
+  {/* prettier-ignore */}
+  <details style="cursor: pointer; user-select: none;">
+    <summary>示例</summary>
+
+  ```js
+  const countAtom = atom(0)
+  atomEffect((get, set) => {
+    const count = get.peek(countAtom) // Will not add `countAtom` as a dependency
+  })
+  ```
+
+  </details>
+
+- **支持递归：**
+  通过 `set.recurse` 支持递归，但不能在清理函数中使用。
+
+  {/* prettier-ignore */}
+  <details style="cursor: pointer; user-select: none;">
+    <summary>示例</summary>
+
+  ```js
+  atomEffect((get, set) => {
+    const count = get(countAtom)
+    if (count % 10 === 0) {
+      return
+    }
+    set.recurse(countAtom, (value) => value + 1)
+  })
+  ```
+
+  </details>

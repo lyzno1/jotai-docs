@@ -1,0 +1,89 @@
+---
+title: atomWithListeners
+nav: 9.08
+keywords: creators,listeners
+---
+
+{/*
+translation-source-path: recipes/atom-with-listeners.mdx
+translation-source-ref: v2.18.0
+translation-source-hash: 74ed71a006fe82d90b13f8ddad049c8e3367941d8426c7df4f985e2d1ca168ad
+translation-status: translated
+*/}
+
+
+> `atomWithListeners` 创建一个原子和一个 hook。该 hook 可用于添加新的监听器。hook 接受一个回调函数作为参数，每当原子的值被设置时，该回调函数都会被调用。hook 同时返回一个用于移除监听器的函数。
+
+当你希望创建一个能够监听原子状态变化、但不需要在每次状态变化时重新渲染的组件时，这个工具非常有用。
+
+```ts
+import { useEffect } from 'react'
+import {
+  atom,
+  useAtom,
+  useSetAtom,
+  Getter,
+  Setter,
+  SetStateAction,
+} from 'jotai'
+
+type Callback<Value> = (
+  get: Getter,
+  set: Setter,
+  newVal: Value,
+  prevVal: Value,
+) => void
+
+export function atomWithListeners<Value>(initialValue: Value) {
+  const baseAtom = atom(initialValue)
+  const listenersAtom = atom<Callback<Value>[]>([])
+  const anAtom = atom(
+    (get) => get(baseAtom),
+    (get, set, arg: SetStateAction<Value>) => {
+      const prevVal = get(baseAtom)
+      set(baseAtom, arg)
+      const newVal = get(baseAtom)
+      get(listenersAtom).forEach((callback) => {
+        callback(get, set, newVal, prevVal)
+      })
+    },
+  )
+  const useListener = (callback: Callback<Value>) => {
+    const setListeners = useSetAtom(listenersAtom)
+    useEffect(() => {
+      setListeners((prev) => [...prev, callback])
+      return () =>
+        setListeners((prev) => {
+          const index = prev.indexOf(callback)
+          return [...prev.slice(0, index), ...prev.slice(index + 1)]
+        })
+    }, [setListeners, callback])
+  }
+  return [anAtom, useListener] as const
+}
+```
+
+在组件中使用：
+
+```jsx
+const [countAtom, useCountListener] = atomWithListeners(0)
+
+function EvenCounter() {
+  const [evenCount, setEvenCount] = useAtom(countAtom)
+
+  useCountListener(
+    useCallback(
+      (get, set, newVal, prevVal) => {
+        // 每当 `countAtom` 的值被设置时，检查新值是否为偶数，
+        // 如果是，则递增 `evenCount`。
+        if (newVal % 2 === 0) {
+          setEvenCount((c) => c + 1)
+        }
+      },
+      [setEvenCount],
+    ),
+  )
+
+  return <>Count 被设置为偶数的次数：{evenCount}</>
+}
+```

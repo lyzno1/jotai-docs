@@ -1,0 +1,139 @@
+---
+title: Async
+nav: 3.03
+keywords: load,loadable,observable
+---
+
+{/*
+translation-source-path: utilities/async.mdx
+translation-source-ref: v2.18.0
+translation-source-hash: 580c9d664fe868f4a8c9a34e6bbcfcdf4b664dd856a1c1dccad39a57eb9a7e77
+translation-status: translated
+*/}
+
+
+所有原子都支持异步行为，例如异步读取或异步写入。不过，这里还介绍了一些用于更精细控制的 API。
+
+## loadable
+
+如果你不希望异步原子触发 Suspense 或抛出错误到错误边界（例如，需要更细粒度地控制加载和错误逻辑），可以使用 `loadable` 工具函数。
+
+它适用于任何原子。只需用 `loadable` 包装你的原子即可。返回值包含三种状态之一：`loading`、`hasData` 和 `hasError`。
+
+```ts
+{
+	state: 'loading' | 'hasData' | 'hasError',
+	data?: any,
+	error?: any,
+}
+```
+
+```jsx
+import { loadable } from "jotai/utils"
+
+const asyncAtom = atom(async (get) => ...)
+const loadableAtom = loadable(asyncAtom)
+// 不需要被 <Suspense> 元素包裹
+const Component = () => {
+  const [value] = useAtom(loadableAtom)
+  if (value.state === 'hasError') return <Text>{value.error}</Text>
+  if (value.state === 'loading') {
+    return <Text>Loading...</Text>
+  }
+  console.log(value.data) // Promise 的结果
+  return <Text>Value: {value.data}</Text>
+}
+```
+
+## atomWithObservable
+
+参考：https://github.com/pmndrs/jotai/pull/341
+
+### 用法
+
+```jsx
+import { useAtom } from 'jotai'
+import { atomWithObservable } from 'jotai/utils'
+import { interval } from 'rxjs'
+import { map } from 'rxjs/operators'
+
+const counterSubject = interval(1000).pipe(map((i) => `#${i}`))
+const counterAtom = atomWithObservable(() => counterSubject)
+
+const Counter = () => {
+  const [counter] = useAtom(counterAtom)
+  return <div>count: {counter}</div>
+}
+```
+
+`atomWithObservable` 函数从 rxjs（或类似库）的 `subject` 或 `observable` 创建一个原子。
+其值将是流中最后发出的值。
+
+要使用此原子，你需要用 `<Suspense>` 包裹你的组件。请参阅 [guides/async](../guides/async.mdx)。
+
+### 初始值
+
+`atomWithObservable` 接受第二个可选参数 `{ initialValue }`，用于指定原子的初始值。如果提供了 `initialValue`，则 `atomWithObservable` 不会触发 Suspense，而是在接收到 observable 的第一个值之前显示初始值。`initialValue` 可以是一个值，也可以是一个返回值的函数。
+
+```js
+const counterAtom = atomWithObservable(() => counterSubject, {
+  initialValue: 10,
+})
+
+const counterAtom2 = atomWithObservable(() => counterSubject, {
+  initialValue: () => Math.random(),
+})
+```
+
+### Stackblitz
+
+[在 StackBlitz 中打开](https://stackblitz.com/edit/vitejs-vite-3bkqrb?file=src%2FApp.tsx)
+
+## unwrap
+
+`unwrap` 工具函数与 `loadable` 类似，将异步原子转换为同步原子。
+与 `loadable` 不同的是，可以配置回退值。
+与 `loadable` 不同的是，错误不会被处理，而是直接抛出。
+
+`unwrap` 的使用场景是简化派生原子的创建。
+这在 v2 API 中特别有用，
+因为读取函数中的 `get` 不会解析 Promise。
+
+### 签名
+
+```ts
+function unwrap<Value, Args extends unknown[], Result>(
+  anAtom: WritableAtom<Value, Args, Result>,
+): WritableAtom<Awaited<Value> | undefined, Args, Result>
+
+function unwrap<Value, Args extends unknown[], Result, PendingValue>(
+  anAtom: WritableAtom<Value, Args, Result>,
+  fallback: (prev?: Awaited<Value>) => PendingValue,
+): WritableAtom<Awaited<Value> | PendingValue, Args, Result>
+
+function unwrap<Value>(anAtom: Atom<Value>): Atom<Awaited<Value> | undefined>
+
+function unwrap<Value, PendingValue>(
+  anAtom: Atom<Value>,
+  fallback: (prev?: Awaited<Value>) => PendingValue,
+): Atom<Awaited<Value> | PendingValue>
+```
+
+### 用法
+
+```tsx
+import { atom } from 'jotai'
+import { unwrap } from 'jotai/utils'
+
+const countAtom = atom(0)
+const delayedCountAtom = atom(async (get) => {
+  await new Promise((r) => setTimeout(r, 500))
+  return get(countAtom)
+})
+
+const unwrapped1Atom = unwrap(delayedCountAtom)
+// 等待期间值为 `undefined`
+
+const unwrapped2Atom = unwrap(delayedCountAtom, (prev) => prev ?? 0)
+// 初始值为 `0`，后续更新保留上一次的值。
+```

@@ -1,0 +1,100 @@
+---
+title: History
+description: A Jōtai utility package for state history
+nav: 4.04
+keywords: history, undo, redo, track changes
+---
+
+{/*
+translation-source-path: third-party/history.mdx
+translation-source-ref: v2.18.0
+translation-source-hash: 0eac54c409b31f9876ce4d049d6123453187c3eace8ccffbbfcffeef87de1f51
+translation-status: translated
+*/}
+
+
+[jotai-history](https://github.com/jotaijs/jotai-history) 是一个用于追踪 Jotai 状态历史的工具包。
+
+## 安装
+
+```
+npm install jotai-history
+```
+
+## `withHistory`
+
+```js
+import { withHistory } from 'jotai-history'
+
+const targetAtom = atom(0)
+const limit = 2
+const historyAtom = withHistory(targetAtom, limit)
+
+function Component() {
+  const [current, previous] = useAtomValue(historyAtom)
+  ...
+}
+```
+
+### 说明
+
+`withHistory` 创建一个原子，用于追踪指定 `targetAtom` 的状态历史。最近的 `limit` 个状态会被保留。
+
+### Action Symbols
+
+- **RESET**
+  清除所有历史记录，移除所有先前的状态（包括撤销/重做栈）。
+
+  ```js
+  import { RESET } from 'jotai-history'
+
+  ...
+
+  function Component() {
+    const setHistoryAtom = useSetAtom(historyAtom)
+    ...
+    setHistoryAtom(RESET)
+  }
+  ```
+
+- **UNDO** 和 **REDO**
+  将 `targetAtom` 在历史记录中前移或后移。
+
+  ```js
+  import { REDO, UNDO } from 'jotai-history'
+
+  ...
+
+  function Component() {
+    const setHistoryAtom = useSetAtom(historyAtom)
+    ...
+    setHistoryAtom(UNDO)
+    setHistoryAtom(REDO)
+  }
+  ```
+
+### 指示器
+
+- **canUndo** 和 **canRedo**
+  布尔值，指示当前是否可以执行撤销或重做操作。可用于禁用按钮或条件性地触发操作。
+
+  ```jsx
+  ...
+
+  function Component() {
+    const history = useAtomValue(historyAtom)
+
+    return (
+      <>
+        <button disabled={!history.canUndo}>Undo</button>
+        <button disabled={!history.canRedo}>Redo</button>
+      </>
+    )
+  }
+  ```
+
+[在 CodeSandbox 中打开](https://codesandbox.io/s/g6qj3q)
+
+## 内存管理
+
+> 由于 `withHistory` 维护了一个先前状态的列表，请通过设置合理的 `limit` 值来注意内存使用。频繁更新状态的应用可能会导致内存使用量显著增长。

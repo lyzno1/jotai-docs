@@ -1,0 +1,62 @@
+---
+title: useReducerAtom
+nav: 9.11
+keywords: reducer, hook, useReducerAtom
+---
+
+{/*
+translation-source-path: recipes/use-reducer-atom.mdx
+translation-source-ref: v2.18.0
+translation-source-hash: 13fe8affa504bce01ed55dbe122902ad4a4060edea31af438ce1c84aaf09fef9
+translation-status: translated
+*/}
+
+
+`useReducerAtom` 是一个自定义 Hook，用于对原始原子应用 reducer。
+
+它适用于临时改变原子的更新行为。另外，也可以考虑使用 [atomWithReducer](../utilities/reducer.mdx) 作为原子级别的解决方案。
+
+```ts
+import { useCallback } from 'react'
+import { useAtom } from 'jotai'
+import type { PrimitiveAtom } from 'jotai'
+
+export function useReducerAtom<Value, Action>(
+  anAtom: PrimitiveAtom<Value>,
+  reducer: (v: Value, a: Action) => Value,
+) {
+  const [state, setState] = useAtom(anAtom)
+  const dispatch = useCallback(
+    (action: Action) => setState((prev) => reducer(prev, action)),
+    [setState, reducer],
+  )
+  return [state, dispatch] as const
+}
+```
+
+### 使用示例
+
+```jsx
+import { atom } from 'jotai'
+
+const countReducer = (prev, action) => {
+  if (action.type === 'inc') return prev + 1
+  if (action.type === 'dec') return prev - 1
+  throw new Error('unknown action type')
+}
+
+const countAtom = atom(0)
+
+const Counter = () => {
+  const [count, dispatch] = useReducerAtom(countAtom, countReducer)
+  return (
+    <div>
+      {count}
+      <button onClick={() => dispatch({ type: 'inc' })}>+1</button>
+      <button onClick={() => dispatch({ type: 'dec' })}>-1</button>
+    </div>
+  )
+}
+```
+
+[在 StackBlitz 中打开](https://stackblitz.com/edit/vitejs-vite-gsctj6?file=src%2FApp.tsx)

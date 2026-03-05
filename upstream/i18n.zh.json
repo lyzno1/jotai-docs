@@ -1,0 +1,347 @@
+{
+  "locale": "zh",
+  "sourceRef": "v2.18.0",
+  "generatedAt": "2026-03-05T13:10:08.891Z",
+  "translations": {
+    "basics/comparison.mdx": {
+      "hash": "872dc92b373d1e46597294b1ad0c8277235cd632dbeccd774dec6e6b0be1df38",
+      "sourceRef": "v2.18.0",
+      "translatedAt": "2026-03-05T13:10:08.891Z"
+    },
+    "basics/concepts.mdx": {
+      "hash": "423453f8b6a8ae8756e85d528661cfbb677b455a9325f9a531b92a141e5c5886",
+      "sourceRef": "v2.18.0",
+      "translatedAt": "2026-03-05T13:10:08.891Z"
+    },
+    "basics/functional-programming-and-jotai.mdx": {
+      "hash": "1f1601b62ef4f4017fe407d0bc16efbfe9011c82d97a480a5afb8ebfde2f8b13",
+      "sourceRef": "v2.18.0",
+      "translatedAt": "2026-03-05T13:10:08.891Z"
+    },
+    "basics/showcase.mdx": {
+      "hash": "c602e6b3e6c262659ec4884b548f7f6e47cc6a2dcc668d8eec19ce1dbc09d048",
+      "sourceRef": "v2.18.0",
+      "translatedAt": "2026-03-05T13:10:08.891Z"
+    },
+    "core/atom.mdx": {
+      "hash": "51aec28fe36b4710832f2e17c555fadab0481bf6160bad86149796a6eed6a5ad",
+      "sourceRef": "v2.18.0",
+      "translatedAt": "2026-03-05T13:10:08.891Z"
+    },
+    "core/provider.mdx": {
+      "hash": "eec3516fe142fb6576b1ba37d3af071762eb6e3d40cce761384b9bd677149723",
+      "sourceRef": "v2.18.0",
+      "translatedAt": "2026-03-05T13:10:08.891Z"
+    },
+    "core/store.mdx": {
+      "hash": "13693e5324504adab4265e99a55cf483dfbdc59e8f67b1ba72745409ed5830ab",
+      "sourceRef": "v2.18.0",
+      "translatedAt": "2026-03-05T13:10:08.891Z"
+    },
+    "core/use-atom.mdx": {
+      "hash": "0ea7eb6e2773c4f38ec7dd0865b4a76f38d81580cd3558038593db6b795fbeda",
+      "sourceRef": "v2.18.0",
+      "translatedAt": "2026-03-05T13:10:08.891Z"
+    },
+    "extensions/cache.mdx": {
+      "hash": "38c717dd54080743dab49609f68637e4d99f2d73feafe43e3e90f71189b945e8",
+      "sourceRef": "v2.18.0",
+      "translatedAt": "2026-03-05T13:10:08.891Z"
+    },
+    "extensions/effect.mdx": {
+      "hash": "8ecdee2f7f3688a8fd65d3fdf44a7c8f39dfe34a97bebf86071440c62c97b066",
+      "sourceRef": "v2.18.0",
+      "translatedAt": "2026-03-05T13:10:08.891Z"
+    },
+    "extensions/immer.mdx": {
+      "hash": "97b38c1b0d4fa19b47f696a9c991ac898c5e7a38dbf7c0cb948816e1cda291d8",
+      "sourceRef": "v2.18.0",
+      "translatedAt": "2026-03-05T13:10:08.891Z"
+    },
+    "extensions/location.mdx": {
+      "hash": "c9e25a679e09114b17a76502baae2c071b4ff06141c9270d5101930000e02a83",
+      "sourceRef": "v2.18.0",
+      "translatedAt": "2026-03-05T13:10:08.891Z"
+    },
+    "extensions/optics.mdx": {
+      "hash": "c5e44a9bec7f8a8c3644634a10b4ccc405e49009e33e02e1fbc6c9c065546515",
+      "sourceRef": "v2.18.0",
+      "translatedAt": "2026-03-05T13:10:08.891Z"
+    },
+    "extensions/query.mdx": {
+      "hash": "96b4ea77a16acf49dd42a25a6c4ad2df6735276f907a4710f9cb097eed950792",
+      "sourceRef": "v2.18.0",
+      "translatedAt": "2026-03-05T13:10:08.891Z"
+    },
+    "extensions/redux.mdx": {
+      "hash": "1b50870396eaa2d710b27e053d6b05c35058fe78e48800de4a905de7f1b616c9",
+      "sourceRef": "v2.18.0",
+      "translatedAt": "2026-03-05T13:10:08.891Z"
+    },
+    "extensions/relay.mdx": {
+      "hash": "66b9e48021bf9f4b896f4f30ac2cb3df20db8f977240b952cdd5863ddb513c9c",
+      "sourceRef": "v2.18.0",
+      "translatedAt": "2026-03-05T13:10:08.891Z"
+    },
+    "extensions/scope.mdx": {
+      "hash": "a1f9ac8727c53b6892af7b954631727dfc78e5ec11af314206a92608fedfac48",
+      "sourceRef": "v2.18.0",
+      "translatedAt": "2026-03-05T13:10:08.891Z"
+    },
+    "extensions/trpc.mdx": {
+      "hash": "35b5a8f675608719e7d9ec3ce24af76c7446bd94b0f0044ad1b328c2b246d693",
+      "sourceRef": "v2.18.0",
+      "translatedAt": "2026-03-05T13:10:08.891Z"
+    },
+    "extensions/urql.mdx": {
+      "hash": "419f191a18ec6d69bc3425683d34408e9b1de98fe2c962f0c770a20b518dff58",
+      "sourceRef": "v2.18.0",
+      "translatedAt": "2026-03-05T13:10:08.891Z"
+    },
+    "extensions/valtio.mdx": {
+      "hash": "d8a4a4b61d08316e228accd75bc37d25b23ccc748d47e224ddbcadbcca318511",
+      "sourceRef": "v2.18.0",
+      "translatedAt": "2026-03-05T13:10:08.891Z"
+    },
+    "extensions/xstate.mdx": {
+      "hash": "d839d10ddd14a8ec65c85deddbb57ea994173169331376d07f26efc858d56e71",
+      "sourceRef": "v2.18.0",
+      "translatedAt": "2026-03-05T13:10:08.891Z"
+    },
+    "extensions/zustand.mdx": {
+      "hash": "10c9a213447500c5d1906c6e935d5094334ab6656bc97581756f9fd560ff0e45",
+      "sourceRef": "v2.18.0",
+      "translatedAt": "2026-03-05T13:10:08.891Z"
+    },
+    "guides/async.mdx": {
+      "hash": "ef9b1fe3e40a6d17265fa6c99acd8ebd03bea914d5789715a69e8e14d9fcd662",
+      "sourceRef": "v2.18.0",
+      "translatedAt": "2026-03-05T13:10:08.891Z"
+    },
+    "guides/atoms-in-atom.mdx": {
+      "hash": "41531448ed1d090d1b59eec6e8a3f5149a3b3a4bcb35e37edb9db09c58a868d2",
+      "sourceRef": "v2.18.0",
+      "translatedAt": "2026-03-05T13:10:08.891Z"
+    },
+    "guides/composing-atoms.mdx": {
+      "hash": "af12e6585c137111e355f03c828573b5dc56347b33eba1f95d0038db8e2061bb",
+      "sourceRef": "v2.18.0",
+      "translatedAt": "2026-03-05T13:10:08.891Z"
+    },
+    "guides/core-internals.mdx": {
+      "hash": "d597bfdbfbcf0c4ee92a1b7713e40ec7c713079f63a40c52d322132e0de7de1d",
+      "sourceRef": "v2.18.0",
+      "translatedAt": "2026-03-05T13:10:08.891Z"
+    },
+    "guides/debugging.mdx": {
+      "hash": "57cb9fd53318643fcf35533d5568de35a5d4d4492b5ecb4f55310e2250995dfb",
+      "sourceRef": "v2.18.0",
+      "translatedAt": "2026-03-05T13:10:08.891Z"
+    },
+    "guides/initialize-atom-on-render.mdx": {
+      "hash": "fe967f77053831590c877301db4060c156990869882f0ac8ec4cba58234f08cc",
+      "sourceRef": "v2.18.0",
+      "translatedAt": "2026-03-05T13:10:08.891Z"
+    },
+    "guides/migrating-to-v2-api.mdx": {
+      "hash": "a513e44cbef8a2559b130fc72041e7277a20d7e15f6f6044841b94ba9c1fa7ee",
+      "sourceRef": "v2.18.0",
+      "translatedAt": "2026-03-05T13:10:08.891Z"
+    },
+    "guides/nextjs.mdx": {
+      "hash": "60f8698a95db6ac75f915ca7d40c9eb24d6e496bac4ee9d6fe327c7561469c7c",
+      "sourceRef": "v2.18.0",
+      "translatedAt": "2026-03-05T13:10:08.891Z"
+    },
+    "guides/performance.mdx": {
+      "hash": "9ccebefb181dd07ac48271f82734a07affe22a7fd0f3cd8d5f0e952fac597c9b",
+      "sourceRef": "v2.18.0",
+      "translatedAt": "2026-03-05T13:10:08.891Z"
+    },
+    "guides/persistence.mdx": {
+      "hash": "ca5ba7a1fd114e9c4b42741c17655f365464352ea668a8fdedff7d6ba1a19e5a",
+      "sourceRef": "v2.18.0",
+      "translatedAt": "2026-03-05T13:10:08.891Z"
+    },
+    "guides/react-native.mdx": {
+      "hash": "f03b150ba0ff06e347e08291dd4921509e0b02c753396e423a348d9e1ca554d9",
+      "sourceRef": "v2.18.0",
+      "translatedAt": "2026-03-05T13:10:08.891Z"
+    },
+    "guides/remix.mdx": {
+      "hash": "9f6b8def084db9ceb9582b755e67421886bd0b7f419511950dc586cbe3da5aa9",
+      "sourceRef": "v2.18.0",
+      "translatedAt": "2026-03-05T13:10:08.891Z"
+    },
+    "guides/resettable.mdx": {
+      "hash": "24cfb40d96e37a201baa1afa59e0c64726446e682399951822945fff91609fc6",
+      "sourceRef": "v2.18.0",
+      "translatedAt": "2026-03-05T13:10:08.891Z"
+    },
+    "guides/testing.mdx": {
+      "hash": "3b61f3a69d097f11d3739677d101b84c670262817c25f673fb872d4fb06abe43",
+      "sourceRef": "v2.18.0",
+      "translatedAt": "2026-03-05T13:10:08.891Z"
+    },
+    "guides/typescript.mdx": {
+      "hash": "9d33703b0c652cfa0b3439fa3f5c133a813b027ac2f124dbbbd1fb01401603ee",
+      "sourceRef": "v2.18.0",
+      "translatedAt": "2026-03-05T13:10:08.891Z"
+    },
+    "guides/using-store-outside-react.mdx": {
+      "hash": "f0e84553d785e796c045167cefbb19c78912b82dfdda46fd0f64184a2f79821f",
+      "sourceRef": "v2.18.0",
+      "translatedAt": "2026-03-05T13:10:08.891Z"
+    },
+    "guides/vite.mdx": {
+      "hash": "d6efb08902dc8239a780676275daca4d83d706edaaa48f12009fab25c8612fb2",
+      "sourceRef": "v2.18.0",
+      "translatedAt": "2026-03-05T13:10:08.891Z"
+    },
+    "guides/waku.mdx": {
+      "hash": "8edc67dd63e0b9f1a8ce230cb560dd2feff439fe8fc530d08e6ab227293211e4",
+      "sourceRef": "v2.18.0",
+      "translatedAt": "2026-03-05T13:10:08.891Z"
+    },
+    "recipes/atom-with-broadcast.mdx": {
+      "hash": "63c052f3eaae7564d2bce8567dc610867c504e5a53255086399db34965db004b",
+      "sourceRef": "v2.18.0",
+      "translatedAt": "2026-03-05T13:10:08.891Z"
+    },
+    "recipes/atom-with-compare.mdx": {
+      "hash": "82e16e9c49a125e68590e272736ed8aa2925acfc1708da9f316dcd9a80ab8ad1",
+      "sourceRef": "v2.18.0",
+      "translatedAt": "2026-03-05T13:10:08.891Z"
+    },
+    "recipes/atom-with-debounce.mdx": {
+      "hash": "8f581aff1695fc748e3046d3d821a6ab191232b69b3cd5a326c1ea14ec97de81",
+      "sourceRef": "v2.18.0",
+      "translatedAt": "2026-03-05T13:10:08.891Z"
+    },
+    "recipes/atom-with-listeners.mdx": {
+      "hash": "74ed71a006fe82d90b13f8ddad049c8e3367941d8426c7df4f985e2d1ca168ad",
+      "sourceRef": "v2.18.0",
+      "translatedAt": "2026-03-05T13:10:08.891Z"
+    },
+    "recipes/atom-with-refresh-and-default.mdx": {
+      "hash": "fa5f500f8d7a0bb48ff46796d323ad37fcffbf0a4f071a622b25bd501a0d00a1",
+      "sourceRef": "v2.18.0",
+      "translatedAt": "2026-03-05T13:10:08.891Z"
+    },
+    "recipes/atom-with-refresh.mdx": {
+      "hash": "e71bf6c4349a3c629d09e2528a310d7066a3826a90cd4af5f0222eb15728bd31",
+      "sourceRef": "v2.18.0",
+      "translatedAt": "2026-03-05T13:10:08.891Z"
+    },
+    "recipes/atom-with-toggle-and-storage.mdx": {
+      "hash": "bba420f89eea48528edca9bc0a365334f912ae3ebdf19b7b5ac0b1ea3394b172",
+      "sourceRef": "v2.18.0",
+      "translatedAt": "2026-03-05T13:10:08.891Z"
+    },
+    "recipes/atom-with-toggle.mdx": {
+      "hash": "7a5255eb9eb89147089ff6ac1670ae69b965185f04f837d9741a0b48cbc4a776",
+      "sourceRef": "v2.18.0",
+      "translatedAt": "2026-03-05T13:10:08.891Z"
+    },
+    "recipes/custom-useatom-hooks.mdx": {
+      "hash": "48fc09f81dd46a2ee9895ef2ccd4fe72a4cb713bc8a973bd4c7d2dbc6dd204a0",
+      "sourceRef": "v2.18.0",
+      "translatedAt": "2026-03-05T13:10:08.891Z"
+    },
+    "recipes/large-objects.mdx": {
+      "hash": "56624e6d7ff9570379124cc2497b946e6d5101c19cd1f64132d26cf7a59c9ebd",
+      "sourceRef": "v2.18.0",
+      "translatedAt": "2026-03-05T13:10:08.891Z"
+    },
+    "recipes/use-atom-effect.mdx": {
+      "hash": "3be7c71e73f7903450845cde441bd9ddc33697f5f58eda7a462e7e0e2068bd0b",
+      "sourceRef": "v2.18.0",
+      "translatedAt": "2026-03-05T13:10:08.891Z"
+    },
+    "recipes/use-reducer-atom.mdx": {
+      "hash": "13fe8affa504bce01ed55dbe122902ad4a4060edea31af438ce1c84aaf09fef9",
+      "sourceRef": "v2.18.0",
+      "translatedAt": "2026-03-05T13:10:08.891Z"
+    },
+    "third-party/bunja.mdx": {
+      "hash": "c9be1de91cd27d102cdfcd01ddda3d3fd26272b0efde70df05852dc954f6048e",
+      "sourceRef": "v2.18.0",
+      "translatedAt": "2026-03-05T13:10:08.891Z"
+    },
+    "third-party/derive.mdx": {
+      "hash": "64c89b8bb49117c2cede23d6d4a47157231381cf000674e363c56c3221a4a08a",
+      "sourceRef": "v2.18.0",
+      "translatedAt": "2026-03-05T13:10:08.891Z"
+    },
+    "third-party/history.mdx": {
+      "hash": "0eac54c409b31f9876ce4d049d6123453187c3eace8ccffbbfcffeef87de1f51",
+      "sourceRef": "v2.18.0",
+      "translatedAt": "2026-03-05T13:10:08.891Z"
+    },
+    "tools/babel.mdx": {
+      "hash": "f9da5abefa21ae6154ec3bf7b55442c76fb625d7497e4c8434e6ac6e67823c72",
+      "sourceRef": "v2.18.0",
+      "translatedAt": "2026-03-05T13:10:08.891Z"
+    },
+    "tools/devtools.mdx": {
+      "hash": "0625b5c09bf66955e3bddb1db69eef6ea4e06c41325411783c193406779cc1b5",
+      "sourceRef": "v2.18.0",
+      "translatedAt": "2026-03-05T13:10:08.891Z"
+    },
+    "tools/swc.mdx": {
+      "hash": "b96a7db718b4cc37f1894f6ad94d6fbcda8afeed69027dd45e557e635c709106",
+      "sourceRef": "v2.18.0",
+      "translatedAt": "2026-03-05T13:10:08.891Z"
+    },
+    "utilities/async.mdx": {
+      "hash": "580c9d664fe868f4a8c9a34e6bbcfcdf4b664dd856a1c1dccad39a57eb9a7e77",
+      "sourceRef": "v2.18.0",
+      "translatedAt": "2026-03-05T13:10:08.891Z"
+    },
+    "utilities/callback.mdx": {
+      "hash": "b2d85b04c9b18a83aaf5ce14f2dff61c8cd98020cbe5cce591190b3d361a4a2b",
+      "sourceRef": "v2.18.0",
+      "translatedAt": "2026-03-05T13:10:08.891Z"
+    },
+    "utilities/family.mdx": {
+      "hash": "d37d394d9ae1d7ffcd635917d41cf04623e1d2214f1ff9c904a1783d28730f46",
+      "sourceRef": "v2.18.0",
+      "translatedAt": "2026-03-05T13:10:08.891Z"
+    },
+    "utilities/lazy.mdx": {
+      "hash": "3d9b4cc6cc4106789873f356225bfe34626a5e968320b9e20be714e80da9ce56",
+      "sourceRef": "v2.18.0",
+      "translatedAt": "2026-03-05T13:10:08.891Z"
+    },
+    "utilities/reducer.mdx": {
+      "hash": "f952daf64525f753bbeb4a1b5f931e6dded2edf9f3e16fcc8d0dccff52c05735",
+      "sourceRef": "v2.18.0",
+      "translatedAt": "2026-03-05T13:10:08.891Z"
+    },
+    "utilities/resettable.mdx": {
+      "hash": "8637ddd9286e015d6fb60b764d3a10a87c4b0087fce15e1397394bd4ed71ada0",
+      "sourceRef": "v2.18.0",
+      "translatedAt": "2026-03-05T13:10:08.891Z"
+    },
+    "utilities/select.mdx": {
+      "hash": "8f2aa3b2b8271a51d53f698807b7e8351d423259a41dc36958cb0c8d5d95826d",
+      "sourceRef": "v2.18.0",
+      "translatedAt": "2026-03-05T13:10:08.891Z"
+    },
+    "utilities/split.mdx": {
+      "hash": "efc537725eeecdeb8f6da7f0dbb171865da1aa5cbdf26f3b567edb8bb492d5a8",
+      "sourceRef": "v2.18.0",
+      "translatedAt": "2026-03-05T13:10:08.891Z"
+    },
+    "utilities/ssr.mdx": {
+      "hash": "813ebebea0f47a7f22907cd5bcf72f159a58e5438e737b5775e88e18b5c6e811",
+      "sourceRef": "v2.18.0",
+      "translatedAt": "2026-03-05T13:10:08.891Z"
+    },
+    "utilities/storage.mdx": {
+      "hash": "d4ce79aa9b5c1cc3fefae805403616b277da67b5a0ea51c4fa9e2059fc9e01c6",
+      "sourceRef": "v2.18.0",
+      "translatedAt": "2026-03-05T13:10:08.891Z"
+    }
+  }
+}

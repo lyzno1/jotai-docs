@@ -1,0 +1,78 @@
+---
+title: atomWithBroadcast
+nav: 9.09
+keywords: creators,broadcast
+---
+
+{/*
+translation-source-path: recipes/atom-with-broadcast.mdx
+translation-source-ref: v2.18.0
+translation-source-hash: 63c052f3eaae7564d2bce8567dc610867c504e5a53255086399db34965db004b
+translation-status: translated
+*/}
+
+
+> `atomWithBroadcast` 创建一个原子。该原子可以在浏览器标签页和框架之间共享，类似于 `atomWithStorage`，但在初始化方面存在限制。
+
+当你希望不同状态之间无需借助 localStorage 即可相互通信时，这个工具非常有用。通过 BroadcastChannel API，你可以在同源的浏览上下文（如窗口、标签页、框架、组件或 iframe）以及 Worker 之间实现基本通信。根据 MDN 文档，BroadcastChannel 不支持在初始化期间接收消息。如果你需要支持该功能，可能需要为 atomWithBroadcast 添加额外选项，例如 localStorage。
+
+```tsx
+import { atom, SetStateAction } from 'jotai'
+
+export function atomWithBroadcast<Value>(key: string, initialValue: Value) {
+  const baseAtom = atom(initialValue)
+  const listeners = new Set<(event: MessageEvent<any>) => void>()
+  const channel = new BroadcastChannel(key)
+
+  channel.onmessage = (event) => {
+    listeners.forEach((l) => l(event))
+  }
+
+  const broadcastAtom = atom(
+    (get) => get(baseAtom),
+    (get, set, update: { isEvent: boolean; value: SetStateAction<Value> }) => {
+      set(baseAtom, update.value)
+
+      if (!update.isEvent) {
+        channel.postMessage(get(baseAtom))
+      }
+    },
+  )
+
+  broadcastAtom.onMount = (setAtom) => {
+    const listener = (event: MessageEvent<any>) => {
+      setAtom({ isEvent: true, value: event.data })
+    }
+
+    listeners.add(listener)
+
+    return () => {
+      listeners.delete(listener)
+    }
+  }
+
+  const returnedAtom = atom(
+    (get) => get(broadcastAtom),
+    (_get, set, update: SetStateAction<Value>) => {
+      set(broadcastAtom, { isEvent: false, value: update })
+    },
+  )
+
+  return returnedAtom
+}
+
+const broadAtom = atomWithBroadcast('count', 0)
+
+const ListOfThings = () => {
+  const [count, setCount] = useAtom(broadAtom)
+
+  return (
+    <div>
+      {count}
+      <button onClick={() => setCount(count + 1)}>+1</button>
+    </div>
+  )
+}
+```
+
+[在 StackBlitz 中打开](https://stackblitz.com/edit/vitejs-vite-imqbzg?file=src%2FApp.tsx)

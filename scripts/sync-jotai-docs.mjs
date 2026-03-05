@@ -2,10 +2,10 @@
 import { spawnSync } from 'node:child_process'
 import { existsSync } from 'node:fs'
 import {
-  copyFile,
   mkdir,
   mkdtemp,
   readdir,
+  readFile,
   rm,
   writeFile,
 } from 'node:fs/promises'
@@ -97,6 +97,27 @@ const SYNCED_CATEGORIES = [
 function isTrackedDocPath(relPath) {
   const firstSegment = relPath.split('/')[0]
   return SYNCED_CATEGORIES.includes(firstSegment)
+}
+
+function sanitizeMdx(content) {
+  let result = content
+  result = result.replace(/<!--[\s\S]*?-->/g, (match) => {
+    const inner = match.slice(4, -3).trim()
+    return `{/* ${inner} */}`
+  })
+  result = result.replace(
+    /<Stackblitz\s+id="([^"]+)"(?:\s+file="([^"]+)")?\s*\/>/g,
+    (_match, id, file) => {
+      const url = `https://stackblitz.com/edit/${id}${file ? `?file=${file}` : ''}`
+      return `[Open in StackBlitz](${url})`
+    },
+  )
+  result = result.replace(
+    /<CodeSandbox\s+id="([^"]+)"\s*\/>/g,
+    (_match, id) => `[Open in CodeSandbox](https://codesandbox.io/s/${id})`,
+  )
+  result = result.replace(/<TOC\s+section="[^"]*"\s*\/>/g, '')
+  return result
 }
 
 async function listMdxFiles(directory) {
@@ -199,14 +220,15 @@ async function main() {
 
     await ensureCleanSyncPaths()
 
-    for (const relPath of upstreamFiles) {
+    const trackedFiles = upstreamFiles.filter((f) => isTrackedDocPath(f))
+
+    for (const relPath of trackedFiles) {
       const source = path.join(upstreamDocsDir, relPath)
       const destination = path.join(DOCS_ROOT, relPath)
       await mkdir(path.dirname(destination), { recursive: true })
-      await copyFile(source, destination)
+      const raw = await readFile(source, 'utf8')
+      await writeFile(destination, sanitizeMdx(raw), 'utf8')
     }
-
-    const trackedFiles = upstreamFiles.filter((f) => isTrackedDocPath(f))
 
     const expectedPaths = trackedFiles.map((f) => path.join(DOCS_ROOT, f))
     await ensureFilesExist(expectedPaths)

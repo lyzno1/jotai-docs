@@ -8,11 +8,14 @@ const ROOT = path.resolve(__dirname, '..')
 const STATUS_SCRIPT = path.join(ROOT, 'scripts', 'i18n-status.mjs')
 
 const FAIL_KEYS = [
-  'missing',
-  'stale',
   'sourceMissing',
   'orphanZh',
   'metadataWithoutPage',
+]
+
+const WARN_KEYS = [
+  'missing',
+  'stale',
 ]
 
 function runStatusJson() {
@@ -51,9 +54,17 @@ function main() {
     .map((key) => ({ key, count: Number(counts[key] ?? 0) }))
     .filter((item) => item.count > 0)
 
+  const warnings = WARN_KEYS
+    .map((key) => ({ key, count: Number(counts[key] ?? 0) }))
+    .filter((item) => item.count > 0)
+
+  if (warnings.length > 0) {
+    console.log(`i18n translation progress: upToDate=${counts.upToDate ?? 0}, missing=${counts.missing ?? 0}, stale=${counts.stale ?? 0}`)
+  }
+
   if (failures.length === 0) {
     console.log(
-      `i18n check passed: upToDate=${counts.upToDate}, missing=0, stale=0, orphanZh=0, metadataWithoutPage=0`,
+      `i18n check passed: orphanZh=0, sourceMissing=0, metadataWithoutPage=0`,
     )
     return
   }

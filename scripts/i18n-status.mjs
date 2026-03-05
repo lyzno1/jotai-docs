@@ -146,7 +146,7 @@ async function computeStatus(options) {
 
   const manifest = await readJsonStrict(manifestPath)
   if (!Array.isArray(manifest.files) || typeof manifest.ref !== 'string') {
-    throw new Error(
+    throw new TypeError(
       `Invalid manifest format in ${manifestPath}. Expected keys: ref (string), files (string[]).`,
     )
   }

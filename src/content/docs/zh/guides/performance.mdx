@@ -7,8 +7,8 @@ keywords: performance
 
 {/*
 translation-source-path: guides/performance.mdx
-translation-source-ref: v2.18.0
-translation-source-hash: 9ccebefb181dd07ac48271f82734a07affe22a7fd0f3cd8d5f0e952fac597c9b
+translation-source-ref: v2.19.0
+translation-source-hash: f72fbf17f11d98786f56e04e10454c861fe2dae1bfc1e1ff1bb7029ac5c670bd
 translation-status: translated
 */}
 
@@ -43,9 +43,11 @@ const Profile = () => {
 const friendsAtom = atom([])
 const fetchFriendsAtom = atom(null, async (get, set, payload) => {
   // Fetch all friends
-  const res = await fetch('https://...')
+  const res = await fetch('https://jsonplaceholder.typicode.com/users')
+  const data = await res.json()
+
   // Make heavy computation once only
-  const computed = res.filter(heavyComputation)
+  const computed = data.filter(heavyComputation)
   set(friendsAtom, computed)
 })
 // Usage in components

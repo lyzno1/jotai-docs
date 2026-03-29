@@ -7,8 +7,8 @@ keywords: devtools,debug,snapshot
 
 {/*
 translation-source-path: tools/devtools.mdx
-translation-source-ref: v2.18.0
-translation-source-hash: 0625b5c09bf66955e3bddb1db69eef6ea4e06c41325411783c193406779cc1b5
+translation-source-ref: v2.19.0
+translation-source-hash: ad2be0efa0f77f464b080ee8bcdb651b4e036de5644c32c6694c3a8aa30893b8
 translation-status: translated
 */}
 
@@ -47,7 +47,9 @@ npm install jotai-devtools
 
 使用 [`jotai-babel`](https://github.com/jotaijs/jotai-babel) 插件以获得最佳调试体验。完整指南请参阅 [babel](../tools/babel) 页面和/或 [swc](../tools/swc) 页面。
 
-示例：
+```
+npm install -D jotai-babel
+```
 
 ```ts
 {
@@ -72,6 +74,28 @@ export default defineConfig({
         presets: ['jotai-babel/preset'],
       },
     }),
+  ],
+})
+```
+
+如果你正在使用 Vite 8，请先安装以下额外的包：
+
+```
+npm install -D @rolldown/plugin-babel @babel/core
+```
+
+然后改用以下示例：
+
+```
+// vite.config.ts
+import babel from '@rolldown/plugin-babel';
+
+export default defineConfig({
+  plugins: [
+    react(),
+    babel({
+      presets: ['jotai-babel/preset'],
+    })
   ],
 })
 ```

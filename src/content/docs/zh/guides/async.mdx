@@ -8,8 +8,8 @@ published: false
 
 {/*
 translation-source-path: guides/async.mdx
-translation-source-ref: v2.18.0
-translation-source-hash: ef9b1fe3e40a6d17265fa6c99acd8ebd03bea914d5789715a69e8e14d9fcd662
+translation-source-ref: v2.19.0
+translation-source-hash: d6cb7891590c92fa317bd42d2e2a2e87acf02d35fc4612b937d809e58372dbba
 translation-status: translated
 */}
 
@@ -89,7 +89,10 @@ const Component = () => {
 Jotai 有一个有趣的模式：可以在异步和同步之间切换，从而在需要时触发 Suspense。
 
 ```js
-const request = async () => fetch('https://...').then((res) => res.json())
+const request = async () =>
+  fetch('https://jsonplaceholder.typicode.com/todos/1').then((res) =>
+    res.json(),
+  )
 const baseAtom = atom(0)
 const Component = () => {
   const [value, setValue] = useAtom(baseAtom)

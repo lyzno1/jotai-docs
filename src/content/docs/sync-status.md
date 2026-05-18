@@ -6,9 +6,9 @@ description: Upstream synchronization metadata for this docs site.
 This site tracks Jotai docs from the upstream repository.
 
 - Upstream repo: [https://github.com/pmndrs/jotai.git](https://github.com/pmndrs/jotai)
-- Current synced ref: `v2.19.0`
-- Upstream commit: `c21f51962601ea5f403fc44baefe389b452506de`
-- Synced at (UTC): `2026-03-29T04:17:41.568Z`
+- Current synced ref: `v2.20.0`
+- Upstream commit: `bdbc766b1556553cec395bb76c3043354baa9d44`
+- Synced at (UTC): `2026-05-18T04:48:38.997Z`
 
 ## Synced counts
 

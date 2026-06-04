@@ -1,9 +1,9 @@
 {
   "upstreamRepo": "https://github.com/pmndrs/jotai.git",
   "track": "latest-tag",
-  "ref": "v2.19.0",
-  "commit": "c21f51962601ea5f403fc44baefe389b452506de",
-  "syncedAt": "2026-03-29T04:17:41.568Z",
+  "ref": "v2.20.0",
+  "commit": "bdbc766b1556553cec395bb76c3043354baa9d44",
+  "syncedAt": "2026-06-04T04:59:09.065Z",
   "counts": {
     "totalMdx": 68,
     "core": 4,

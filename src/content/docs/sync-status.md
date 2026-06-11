@@ -8,7 +8,7 @@ This site tracks Jotai docs from the upstream repository.
 - Upstream repo: [https://github.com/pmndrs/jotai.git](https://github.com/pmndrs/jotai)
 - Current synced ref: `v2.20.0`
 - Upstream commit: `bdbc766b1556553cec395bb76c3043354baa9d44`
-- Synced at (UTC): `2026-06-08T04:58:10.287Z`
+- Synced at (UTC): `2026-06-11T04:56:30.426Z`
 
 ## Synced counts
 

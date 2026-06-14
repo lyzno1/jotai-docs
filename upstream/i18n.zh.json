@@ -1,7 +1,7 @@
 {
   "locale": "zh",
   "sourceRef": "v2.20.1",
-  "generatedAt": "2026-06-14T05:14:44.702Z",
+  "generatedAt": "2026-06-14T05:18:27.883Z",
   "translations": {
     "basics/comparison.mdx": {
       "hash": "872dc92b373d1e46597294b1ad0c8277235cd632dbeccd774dec6e6b0be1df38",
@@ -268,6 +268,11 @@
       "sourceRef": "v2.20.1",
       "translatedAt": "2026-06-14T05:14:44.702Z"
     },
+    "third-party/eager.mdx": {
+      "hash": "524bd11b0b3c23b50be9cd345094cda5d4f80a9a6b61433b8ea39f27b82f9684",
+      "sourceRef": "v2.20.1",
+      "translatedAt": "2026-06-14T05:18:27.883Z"
+    },
     "third-party/history.mdx": {
       "hash": "0eac54c409b31f9876ce4d049d6123453187c3eace8ccffbbfcffeef87de1f51",
       "sourceRef": "v2.20.1",
@@ -282,6 +287,11 @@
       "hash": "a70acf0765642af6a5c4a115b7c9aa0598d930d868068dfb56a0967547a943ae",
       "sourceRef": "v2.20.1",
       "translatedAt": "2026-06-14T05:14:44.702Z"
+    },
+    "tools/rolldown.mdx": {
+      "hash": "bc263d1e6af84ecb4764f67e33afddb89c0cc0a260e3314b352b4560f5b62313",
+      "sourceRef": "v2.20.1",
+      "translatedAt": "2026-06-14T05:18:27.883Z"
     },
     "tools/swc.mdx": {
       "hash": "b96a7db718b4cc37f1894f6ad94d6fbcda8afeed69027dd45e557e635c709106",

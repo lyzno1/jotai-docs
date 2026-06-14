@@ -1,0 +1,202 @@
+---
+title: Eager
+description: This doc describes Eager extension.
+nav: 5.01
+keywords: eager,derive,derived,async,zalgo,suspense,promise,react
+---
+
+{/*
+translation-source-path: third-party/eager.mdx
+translation-source-ref: v2.20.1
+translation-source-hash: 524bd11b0b3c23b50be9cd345094cda5d4f80a9a6b61433b8ea39f27b82f9684
+translation-status: translated
+*/}
+
+
+**Jōtai Eager** 提供了用于构建异步数据图的原语，能在值可用时立即处理（要么等待，要么同步处理）。
+
+---
+
+[在 CodeSandbox 中打开](https://codesandbox.io/s/jotai-eager-example-pf38dg)
+
+### 适用场景
+
+- 当缓存的局部更新导致微短暂的 Suspense 挂起时
+- 当不必要的重新计算引发性能问题时
+
+### 安装
+
+```sh
+npm install jotai-eager
+```
+
+## 动机
+
+Jōtai 提供了强大的原语，用于在 Web 框架（如 React）之外处理异步数据，并允许 UI 和业务逻辑与数据层正确集成。许多数据获取方案通过原子提供对客户端缓存的访问。当缓存尚未填充时，原子必须解析为值的 Promise。然而，如果值已经存在于缓存中，且进行了乐观更新，则该值可以立即在下游可用。
+
+以这些具有双重特性（有时异步、有时同步）的原子为基础构建数据图，如果处理不当，可能导致不必要的重新渲染、过时的值以及微短暂的 Suspense 挂起（在 React 中）。
+
+## Eager 原子
+
+假设有一个从 API 获取宠物名称的原子和一个过滤原子：
+
+```ts
+const petsAtom = atom<Promise<string[]>>(...);
+const filterAtom = atom('cat');
+```
+
+使用普通原子创建过滤后的宠物原子，通常写法如下：
+
+```ts
+const filteredPetsAtom = atom(async (get) => {
+  const filter = get(filterAtom)
+  const pets = await get(petsAtom)
+  return pets.filter((name) => name.includes(filter))
+}) // => Atom<Promise<string[]>>
+```
+
+`filteredPetsAtom` 始终返回 Promise，即使结果在 `filterAtom` 是唯一变更依赖时本可以同步计算出来。使用 **jotai-eager** 可以解决这个问题：
+
+```ts
+import { eagerAtom } from 'jotai-eager'
+
+const filteredPetsAtom = eagerAtom((get) => {
+  const filter = get(filterAtom)
+  const pets = get(petsAtom) // ✨ 无需 await ✨
+  return pets.filter((name) => name.includes(filter))
+}) // => Atom<Promise<string[]> | string[]>
+```
+
+现在，类型反映了该原子的 eager 行为。当 `filterAtom` 是唯一变更的依赖时，值为 `string[]`；否则为 `Promise<string[]>`！
+
+## 避免请求瀑布
+
+当原子有多个异步依赖时，最好同时发起所有请求并等待结果，而不是顺序等待。在普通异步原子中，使用 `Promise.all(...)`，而在 eager 原子中，使用 `get.all()` API：
+
+```ts
+const myMessages = eagerAtom((get) => {
+  const [user, messages] = get.all([userAtom, messagesAtom])
+  return messages.filter((msg) => msg.authorId === user.id)
+}) // => Atom<Message[] | Promise<Message[]>>
+```
+
+## 等待非原子值的 Promise
+
+可以在 `eagerAtom` 定义中使用 `get.await` API 等待普通 Promise，前提是确保每次调用原子读取函数时传入的 Promise 是同一个实例。
+
+```ts
+const statusAtom = eagerAtom((get) => {
+  const statusPromise = get(currentInvoiceAtom).getStatus() // => Promise<InvoiceStatus>
+  const status = get.await(statusPromise)
+  //    ^? InvoiceStatus
+  return status
+})
+```
+
+## 使用 `loadable` 处理加载状态
+
+`loadable` API 将原子包装为统一的加载状态表示，在所有 jotai-eager API 之间共享 Promise 缓存，从而减少 Suspense 挂起次数。
+
+```ts
+import { atom } from 'jotai';
+import { loadable } from 'jotai-eager';
+
+const asyncAtom = atom(async () => 'data');
+const loadableAtom = loadable(asyncAtom);
+
+// 在组件中使用：
+const state = useAtom(loadableAtom);
+if (state.state === 'loading') return <div>Loading...</div>;
+if (state.state === 'hasError') return <div>Error: {state.error}</div>;
+return <div>{state.data}</div>;
+```
+
+## 使用 `withPending` 处理挂起状态
+
+`withPending` API 将原子包装为在值未解析时返回回退值，是 Jotai `unwrap` 的替代方案，提供了更完善的挂起状态管理。
+
+```ts
+import { atom } from 'jotai'
+import { withPending } from 'jotai-eager'
+
+const asyncAtom = atom(Promise.resolve('data'))
+const wrappedAtom = withPending(asyncAtom, () => 'Loading...')
+
+// 挂起时返回 'Loading...'，解析后返回 'data'
+```
+
+## 在 eager 原子内使用 `try` & `catch`
+
+Eager 原子内部通过抛出异常来挂起原子的计算，直到异步依赖完成（类似 React 的 Suspense 机制，但不依赖 React）。因此，在 eager 原子内使用异常处理时，需要额外调用 `isEagerError` 进行判断。
+
+```ts
+import { eagerAtom, isEagerError } from 'jotai-eager'
+
+const fooAtom = eagerAtom((get) => {
+  try {
+    // ...
+  } catch (e) {
+    if (isEagerError(e)) {
+      // 重新抛出，交由 `jotai-eager` 处理
+      throw e
+    }
+
+    // ...
+  }
+})
+```
+
+## 等待在原子内部创建的 Promise
+
+由于读取函数在等待的 Promise 完成后会"重试"，机制要求第二次调用 `get.await` 时传入同一个 Promise。如果 Promise 是在读取函数内部创建的，就永远无法满足这个要求，会导致无限循环。
+
+```ts
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
+
+// 该原子将陷入无限循环 :(
+const deferredNumberAtom = eagerAtom((get) => {
+  get.await(sleep(1000)) // 等待一秒…
+  return 123
+})
+```
+
+对于这种始终需要延迟的场景，使用 `eagerAtom` 相比普通异步原子没有优势。
+
+## soon / soonAll
+
+对于更高级的用法，例如**条件依赖**，可以使用 `soon` 和 `soonAll` 函数在更细粒度上对数据执行同步/异步的 eager 转换。
+
+### 条件依赖
+
+```ts
+import { soon } from 'jotai-eager'
+
+// 已有如下定义：
+//   const queryAtom: Atom<RestrictedItem | Promise<RestrictedItem>>;
+//   const isAdminAtom: Atom<boolean | Promise<boolean>>;
+
+// Atom<RestrictedItem | null | Promise<RestrictedItem | null>>
+const restrictedItemAtom = atom((get) => {
+  const isAdmin = get(isAdminAtom)
+  return soon(isAdmin, (isAdmin) => (isAdmin ? get(queryAtom) : null))
+})
+```
+
+### 条件依赖（多个条件）
+
+```ts
+import { soon, soonAll } from 'jotai-eager'
+
+// 已有如下定义：
+//   const queryAtom: Atom<RestrictedItem | Promise<RestrictedItem>>;
+//   const isAdminAtom: Atom<boolean | Promise<boolean>>;
+//   const enabledAtom: Atom<boolean | Promise<boolean>>;
+
+// Atom<RestrictedItem | null | Promise<RestrictedItem | null>>
+const restrictedItemAtom = atom((get) => {
+  return soon(
+    soonAll(get(isAdminAtom), get(enabledAtom)),
+    ([isAdmin, enabled]) => (isAdmin && enabled ? get(queryAtom) : null),
+  )
+})
+```

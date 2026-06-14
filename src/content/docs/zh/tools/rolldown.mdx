@@ -1,0 +1,106 @@
+---
+title: Rolldown
+description: This doc describes the `jotai-rolldown` package.
+nav: 6.03
+keywords: rolldown,vite,fast,refresh
+---
+
+{/*
+translation-source-path: tools/rolldown.mdx
+translation-source-ref: v2.20.1
+translation-source-hash: bc263d1e6af84ecb4764f67e33afddb89c0cc0a260e3314b352b4560f5b62313
+translation-status: translated
+*/}
+
+
+⚠️ 注意：此插件为实验性功能。欢迎在 [Github 仓库](https://github.com/jotaijs/jotai-rolldown) 提供反馈。请在该独立仓库而非 `jotai` 主仓库中提交问题。
+
+## jotaijs/jotai-rolldown
+
+此插件通过添加 React Refresh 支持和 DevTools 支持，提升 Jotai 的开发体验。
+
+### 用法
+
+安装：
+
+```sh
+npm install --save-dev jotai-rolldown
+```
+
+可以将插件添加到 `rolldown.config.ts`：
+
+```ts
+import jotai from 'jotai-rolldown'
+import { defineConfig } from 'rolldown'
+
+export default defineConfig({
+  plugins: [jotai()],
+})
+```
+
+或者添加到 `vite.config.ts`：
+
+```ts
+import jotai from 'jotai-rolldown'
+import { defineConfig } from 'vite'
+
+export default defineConfig({
+  plugins: [jotai()],
+})
+```
+
+### 选项
+
+#### `reactRefresh`
+
+类型：`boolean`
+默认值：`true`（开发环境）
+
+启用 React Refresh 支持。
+
+确保在使用 React Refresh 开发时不会重置状态。
+
+#### `debugLabel`
+
+类型：`boolean`
+默认值：`true`（开发环境）
+
+Jotai 基于对象引用而非键（与 Recoil 不同），这意味着原子没有标识符。为了识别原子，可以为原子添加 `debugLabel`，该标签会在 React 开发者工具中显示。
+
+然而，手动为每个原子添加 `debugLabel` 很快会变得繁琐。此插件会根据变量名自动为每个原子添加 `debugLabel`。
+
+该插件会将以下代码：
+
+```js
+export const countAtom = atom(0)
+```
+
+转换为：
+
+```js
+export const countAtom = atom(0)
+countAtom.debugLabel = 'countAtom'
+```
+
+默认导出也会被处理，基于文件名：
+
+```js
+// countAtom.ts
+export default atom(0)
+```
+
+转换为：
+
+```js
+// countAtom.ts
+const countAtom = atom(0)
+countAtom.debugLabel = 'countAtom'
+export default countAtom
+```
+
+#### `atomNames`
+
+类型：`string[]`
+默认值：`[]`
+
+自定义原子函数名，使插件能够识别它们。

@@ -1,6 +1,6 @@
 {
-  "syncedAt": "2026-06-08T04:58:10.287Z",
-  "ref": "v2.20.0",
+  "syncedAt": "2026-06-14T05:13:21.610Z",
+  "ref": "v2.20.1",
   "files": [
     "basics/comparison.mdx",
     "basics/concepts.mdx",
@@ -55,10 +55,11 @@
     "recipes/use-atom-effect.mdx",
     "recipes/use-reducer-atom.mdx",
     "third-party/bunja.mdx",
-    "third-party/derive.mdx",
+    "third-party/eager.mdx",
     "third-party/history.mdx",
     "tools/babel.mdx",
     "tools/devtools.mdx",
+    "tools/rolldown.mdx",
     "tools/swc.mdx",
     "utilities/async.mdx",
     "utilities/callback.mdx",

@@ -1,18 +1,18 @@
 {
   "upstreamRepo": "https://github.com/pmndrs/jotai.git",
   "track": "latest-tag",
-  "ref": "v2.20.1",
-  "commit": "ddd36007f99903a2258ee47bcd4490ad4589602e",
-  "syncedAt": "2026-06-14T05:13:21.611Z",
+  "ref": "v2.20.3",
+  "commit": "3e0b9ffad54b2fbedf2165a82d06ae6bcf1ebd67",
+  "syncedAt": "2026-09-02T07:58:40.501Z",
   "counts": {
-    "totalMdx": 69,
+    "totalMdx": 70,
     "core": 4,
     "basics": 4,
     "guides": 18,
     "recipes": 12,
     "utilities": 10,
     "extensions": 14,
-    "tools": 4,
+    "tools": 5,
     "third-party": 3
   }
 }

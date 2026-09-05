@@ -1,6 +1,6 @@
 {
-  "syncedAt": "2026-06-14T05:13:21.610Z",
-  "ref": "v2.20.1",
+  "syncedAt": "2026-09-05T07:43:53.372Z",
+  "ref": "v2.20.3",
   "files": [
     "basics/comparison.mdx",
     "basics/concepts.mdx",
@@ -60,6 +60,7 @@
     "tools/babel.mdx",
     "tools/devtools.mdx",
     "tools/rolldown.mdx",
+    "tools/skill.mdx",
     "tools/swc.mdx",
     "utilities/async.mdx",
     "utilities/callback.mdx",
